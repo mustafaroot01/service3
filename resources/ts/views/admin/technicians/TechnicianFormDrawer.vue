@@ -64,14 +64,22 @@ const loadDistricts = async (governorateId: number | null) => {
   districts.value = res.data ?? []
 }
 
-watch(() => drawer.form.value.governorate_id, async (next, prev) => {
-  if (prev !== undefined && next !== prev)
+/**
+ * Set while a record is being loaded into the form. Without it the watcher
+ * below cannot tell a programmatic fill from a real choice, and wipes the
+ * district it was just given — the saved district vanished on every edit.
+ */
+const loading = ref(false)
+
+watch(() => drawer.form.value.governorate_id, async next => {
+  if (!loading.value)
     drawer.form.value.district_id = null
 
   await loadDistricts(next as number | null)
 })
 
 const openCreate = () => {
+  loading.value = false
   drawer.openCreate()
   existing.value = {}
   existingSamples.value = []
@@ -79,9 +87,28 @@ const openCreate = () => {
   releasePending()
 }
 
+const opening = ref(false)
+
 const openEdit = async (id: number) => {
-  const res = await $api<ApiResponse<TechnicianRecord>>(`/admin/technicians/${id}`)
-  const full = res.data
+  opening.value = true
+
+  let full: TechnicianRecord
+
+  try {
+    // Without this the button did nothing at all when the fetch failed —
+    // no drawer, no message, nothing to tell the admin what happened.
+    full = (await $api<ApiResponse<TechnicianRecord>>(`/admin/technicians/${id}`)).data
+  }
+  catch (e: any) {
+    toast.error(e?.data?.message ?? 'تعذّر جلب بيانات الفني')
+
+    return
+  }
+  finally {
+    opening.value = false
+  }
+
+  loading.value = true
 
   drawer.openEdit({
     ...full,
@@ -99,6 +126,10 @@ const openEdit = async (id: number) => {
   releasePending()
 
   await loadDistricts(full.governorate_id)
+
+  // Released only after the watcher has run, so it sees the load, not a choice.
+  await nextTick()
+  loading.value = false
 }
 
 const dropSample = async (media: TechnicianDocument) => {
@@ -155,7 +186,7 @@ const dropPending = (index: number) => {
 
 onBeforeUnmount(releasePending)
 
-defineExpose({ openCreate, openEdit })
+defineExpose({ openCreate, openEdit, opening })
 </script>
 
 <template>

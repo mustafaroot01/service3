@@ -192,7 +192,13 @@ const statusColor = (status: string) => ({
             <VTooltip activator="parent" location="top">عرض الملف</VTooltip>
           </VBtn>
 
-          <VBtn icon variant="text" size="small" color="default" :loading="busyRow === item.id">
+          <VBtn
+            icon
+            variant="text"
+            size="small"
+            color="default"
+            :loading="busyRow === item.id || formDrawer?.opening"
+          >
             <VIcon icon="tabler-dots-vertical" />
             <VMenu activator="parent">
               <VList density="compact">

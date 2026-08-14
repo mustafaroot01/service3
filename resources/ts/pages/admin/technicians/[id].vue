@@ -62,6 +62,7 @@ const loadDistricts = async (governorateId: number | null) => {
 }
 
 const applyToForm = (t: Technician) => {
+  filling.value = true
   form.name = t.name
   form.phone = t.phone
   form.governorate_id = t.governorate_id
@@ -77,14 +78,19 @@ const load = async () => {
     technician.value = res.data
     applyToForm(res.data)
     await loadDistricts(res.data.governorate_id)
+    await nextTick()
+    filling.value = false
   }
   finally {
     loading.value = false
   }
 }
 
-watch(() => form.governorate_id, async (next, prev) => {
-  if (prev !== null && next !== prev)
+/** Same guard as the drawer: a programmatic fill must not clear the district. */
+const filling = ref(false)
+
+watch(() => form.governorate_id, async next => {
+  if (!filling.value)
     form.district_id = null
 
   await loadDistricts(next)
@@ -123,6 +129,8 @@ const submit = async (files: Record<string, File | File[]> = {}) => {
 
   technician.value = res.data
   applyToForm(res.data)
+  await nextTick()
+  filling.value = false
 
   return res
 }
