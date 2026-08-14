@@ -20,7 +20,13 @@ function recursiveLayouts(route: RouteRecordRaw): RouteRecordRaw {
 }
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  /**
+   * The base is '/' and never import.meta.env.BASE_URL: Laravel's Vite plugin
+   * sets that to '/build/' so the browser can find the compiled assets, and
+   * feeding it to the router prefixed every page with it — the panel would
+   * navigate to /build/login, which is an asset path, not a route.
+   */
+  history: createWebHistory('/'),
   scrollBehavior(to) {
     if (to.hash)
       return { el: to.hash, behavior: 'smooth', top: 60 }

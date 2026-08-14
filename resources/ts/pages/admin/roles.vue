@@ -128,6 +128,14 @@ const toggleEverything = (on: boolean) => {
 }
 
 const save = async () => {
+  if (!label.value.trim()) {
+    // A dead button explains nothing; say what is missing where it is missing.
+    errors.value = { label: ['اسم الدور مطلوب'] }
+    toast.error('اكتب اسم الدور أولاً')
+
+    return
+  }
+
   saving.value = true
   errors.value = {}
   try {
@@ -384,7 +392,6 @@ onMounted(load)
           </VBtn>
           <VBtn
             v-if="!isLocked"
-            :disabled="!label.trim()"
             :loading="saving"
             @click="save"
           >

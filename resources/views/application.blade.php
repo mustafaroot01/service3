@@ -44,8 +44,8 @@
   </div>
   
   <script>
-    const loaderColor = localStorage.getItem('vuexy-initial-loader-bg') || '#FFFFFF'
-    const primaryColor = localStorage.getItem('vuexy-initial-loader-color') || '#7367F0'
+    const loaderColor = localStorage.getItem('hoame-initial-loader-bg') || '#FFFFFF'
+    const primaryColor = localStorage.getItem('hoame-initial-loader-color') || '#7367F0'
 
     if (loaderColor)
       document.documentElement.style.setProperty('--initial-loader-bg', loaderColor)

@@ -5,7 +5,14 @@ import { _setDirAttr } from '@layouts/utils'
 // ℹ️ We should not import themeConfig here but in urgency we are doing it for now
 import { layoutConfig } from '@themeConfig'
 
-export const namespaceConfig = (str: string) => `${layoutConfig.app.title}-${str}`
+/**
+ * Cookie names must be ASCII, so the namespace is a fixed slug rather than the
+ * app title — an Arabic title made every write throw and the panel silently
+ * forgot the theme, the direction and every other preference on reload.
+ */
+export const COOKIE_NAMESPACE = 'hoame'
+
+export const namespaceConfig = (str: string) => `${COOKIE_NAMESPACE}-${str}`
 
 export const cookieRef = <T>(key: string, defaultValue: T) => {
   return useCookie<T>(namespaceConfig(key), { default: () => defaultValue })
