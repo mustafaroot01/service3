@@ -40,8 +40,6 @@ declare module 'vue-router/auto-routes' {
     'admin-technicians-id': RouteRecordInfo<'admin-technicians-id', '/admin/technicians/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
     'admin-users': RouteRecordInfo<'admin-users', '/admin/users', Record<never, never>, Record<never, never>>,
     'admin-users-id': RouteRecordInfo<'admin-users-id', '/admin/users/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
-    'apps-email-filter': RouteRecordInfo<'apps-email-filter', '/apps/email/:filter', { filter: ParamValue<true> }, { filter: ParamValue<false> }>,
-    'apps-email-label': RouteRecordInfo<'apps-email-label', '/apps/email/:label', { label: ParamValue<true> }, { label: ParamValue<false> }>,
     'login': RouteRecordInfo<'login', '/login', Record<never, never>, Record<never, never>>,
     'not-authorized': RouteRecordInfo<'not-authorized', '/not-authorized', Record<never, never>, Record<never, never>>,
   }
