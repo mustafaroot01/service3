@@ -42,19 +42,21 @@ class CustomerAuthService
 
             $user = $existing ?: new User;
             $user->fill($attributes);
-            $user->status = UserStatus::PENDING;
+
+            // The number is taken as given at signup: no code is sent and the
+            // account opens straight away, so registration never waits on the
+            // messaging provider.
+            $user->forceFill([
+                'status' => UserStatus::ACTIVE,
+                'phone_verified_at' => now(),
+            ]);
+
             $user->save();
 
             return $user;
         });
 
-        $this->otp->send($phone, OtpPurpose::REGISTER);
-
-        return [
-            'phone' => $phone,
-            'resend_in' => $this->otp->secondsUntilResend($phone, OtpPurpose::REGISTER),
-            'user_id' => $user->id,
-        ];
+        return $this->issueToken($user);
     }
 
     public function resend(string $phone, OtpPurpose $purpose): array
@@ -114,12 +116,6 @@ class CustomerAuthService
         if (! $user || ! Hash::check($password, $user->password)) {
             throw ValidationException::withMessages([
                 'phone' => 'رقم الهاتف أو كلمة السر غير صحيحة',
-            ]);
-        }
-
-        if ($user->phone_verified_at === null) {
-            throw ValidationException::withMessages([
-                'phone' => 'لم يتم توثيق رقمك بعد، اطلب رمز التحقق',
             ]);
         }
 

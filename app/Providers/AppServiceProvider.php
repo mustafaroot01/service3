@@ -50,9 +50,6 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('otp-verify', fn (Request $request) => Limit::perMinutes(10, 8)
             ->by('otp-verify:'.$phone($request)));
 
-        RateLimiter::for('customer-login', fn (Request $request) => Limit::perMinute(20)
-            ->by('login:'.$phone($request)));
-
         /**
          * Counted per phone, never per address. Iraqi carriers put thousands of
          * customers behind one address, so an address cap would lock a whole

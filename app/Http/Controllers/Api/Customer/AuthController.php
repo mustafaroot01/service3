@@ -23,9 +23,10 @@ class AuthController extends Controller
 
     public function register(RegisterRequest $request): JsonResponse
     {
-        return ApiResponse::created(
+        return $this->authPayload(
             $this->auth->register($request->validated()),
-            'أرسلنا رمز التحقق إلى واتساب، أدخله لإكمال التسجيل'
+            'تم إنشاء حسابك بنجاح',
+            201
         );
     }
 
@@ -91,12 +92,12 @@ class AuthController extends Controller
         return ApiResponse::success(null, 'تم تسجيل الخروج بنجاح');
     }
 
-    private function authPayload(array $result, string $message): JsonResponse
+    private function authPayload(array $result, string $message, int $code = 200): JsonResponse
     {
         return ApiResponse::success([
             'user' => (new UserResource($result['user']))->resolve(),
             'token' => $result['token'],
             'token_type' => $result['token_type'],
-        ], $message);
+        ], $message, $code);
     }
 }

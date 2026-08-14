@@ -1,6 +1,8 @@
 <?php
 
 use App\Enums\UserStatus;
+use App\Models\Governorate;
+use App\Models\District;
 use App\Models\Admin;
 use App\Models\User;
 
@@ -9,6 +11,11 @@ use App\Models\User;
  * account, because orders cascade off it and the history would go with them.
  */
 beforeEach(function () {
+    $this->governorate = Governorate::create(['name' => 'بغداد', 'is_active' => true]);
+    $this->district = District::create([
+        'governorate_id' => $this->governorate->id, 'name' => 'الكرخ', 'is_active' => true,
+    ]);
+
     $this->customer = User::factory()->verified()->create();
     $this->token = $this->customer->createToken('app')->plainTextToken;
 
@@ -129,4 +136,43 @@ it('refuses to dismiss a request that does not exist', function () {
 
 it('needs a token — a visitor cannot request anyone deleted', function () {
     $this->postJson('/api/v1/customer/profile/delete-request')->assertUnauthorized();
+});
+
+it('opens the account at signup without waiting on a code', function () {
+    $this->postJson('/api/v1/customer/auth/register', [
+        'name' => 'زبون جديد',
+        'gender' => 'male',
+        'phone' => '07766600123',
+        'password' => 'hoame-2026',
+        'password_confirmation' => 'hoame-2026',
+        'governorate_id' => $this->governorate->id,
+        'district_id' => $this->district->id,
+        'terms_accepted' => true,
+    ])
+        ->assertCreated()
+        ->assertJsonPath('data.user.status', 'active')
+        ->assertJsonPath('data.user.phone_verified', true)
+        ->assertJsonStructure(['data' => ['user', 'token', 'token_type']]);
+
+    $created = User::where('phone', '9647766600123')->sole();
+
+    expect($created->phone_verified_at)->not->toBeNull()
+        ->and($created->status)->toBe(UserStatus::ACTIVE);
+
+    app('auth')->forgetGuards();
+
+    // The account works straight away — no verification step in between.
+    $this->postJson('/api/v1/customer/auth/login', [
+        'phone' => '07766600123', 'password' => 'hoame-2026',
+    ])->assertOk();
+});
+
+it('does not throttle repeated logins', function () {
+    foreach (range(1, 25) as $ignored) {
+        app('auth')->forgetGuards();
+
+        $this->postJson('/api/v1/customer/auth/login', [
+            'phone' => $this->customer->phone, 'password' => 'password',
+        ])->assertOk();
+    }
 });

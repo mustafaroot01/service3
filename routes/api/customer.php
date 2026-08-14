@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('customer')->name('customer.')->group(function () {
 
     Route::prefix('auth')->name('auth.')->group(function () {
-        Route::post('register', [AuthController::class, 'register'])
-            ->middleware('throttle:otp-send')->name('register');
+        // Signup no longer sends a code, so it is not held to the messaging cap.
+        Route::post('register', [AuthController::class, 'register'])->name('register');
 
         Route::post('resend-otp', [AuthController::class, 'resendOtp'])
             ->middleware('throttle:otp-send')->name('resend-otp');
@@ -26,8 +26,7 @@ Route::prefix('customer')->name('customer.')->group(function () {
         Route::post('verify-otp', [AuthController::class, 'verifyOtp'])
             ->middleware('throttle:otp-verify')->name('verify-otp');
 
-        Route::post('login', [AuthController::class, 'login'])
-            ->middleware('throttle:customer-login')->name('login');
+        Route::post('login', [AuthController::class, 'login'])->name('login');
 
         Route::post('forgot-password', [AuthController::class, 'forgotPassword'])
             ->middleware('throttle:otp-send')->name('forgot-password');
