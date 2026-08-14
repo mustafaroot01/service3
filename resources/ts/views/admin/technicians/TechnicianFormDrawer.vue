@@ -76,6 +76,7 @@ const openCreate = () => {
   existing.value = {}
   existingSamples.value = []
   districts.value = []
+  releasePending()
 }
 
 const openEdit = async (id: number) => {
@@ -95,6 +96,7 @@ const openEdit = async (id: number) => {
     SINGLE_SLOTS.map(s => [s.key, (docs[s.key] as TechnicianDocument | null)?.url ?? null]),
   )
   existingSamples.value = (docs.work_sample as TechnicianDocument[]) ?? []
+  releasePending()
 
   await loadDistricts(full.governorate_id)
 }
@@ -115,11 +117,43 @@ const dropSample = async (media: TechnicianDocument) => {
   }
 }
 
-const pickSamples = (event: Event) => {
-  const files = Array.from((event.target as HTMLInputElement).files ?? [])
+/** Object URLs for files not uploaded yet, so the admin sees what he picked. */
+const pending = ref<{ file: File; url: string }[]>([])
+const samplesInput = ref<HTMLInputElement>()
+const preview = ref<string | null>(null)
 
-  drawer.form.value.work_samples = files.slice(0, WORK_SAMPLE_LIMIT)
+const releasePending = () => {
+  pending.value.forEach(p => URL.revokeObjectURL(p.url))
+  pending.value = []
 }
+
+const room = computed(() => WORK_SAMPLE_LIMIT - existingSamples.value.length - pending.value.length)
+
+const addSamples = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const picked = Array.from(input.files ?? [])
+
+  input.value = ''
+
+  if (!picked.length)
+    return
+
+  const accepted = picked.slice(0, Math.max(0, room.value))
+
+  if (accepted.length < picked.length)
+    toast.error(`الحد الأقصى ${WORK_SAMPLE_LIMIT} نماذج، أُضيف ${accepted.length} فقط`)
+
+  pending.value = [...pending.value, ...accepted.map(file => ({ file, url: URL.createObjectURL(file) }))]
+  drawer.form.value.work_samples = pending.value.map(p => p.file)
+}
+
+const dropPending = (index: number) => {
+  URL.revokeObjectURL(pending.value[index].url)
+  pending.value = pending.value.filter((_, i) => i !== index)
+  drawer.form.value.work_samples = pending.value.map(p => p.file)
+}
+
+onBeforeUnmount(releasePending)
 
 defineExpose({ openCreate, openEdit })
 </script>
@@ -208,41 +242,133 @@ defineExpose({ openCreate, openEdit })
     />
 
     <VDivider class="mb-4" />
-    <div class="text-body-1 font-weight-medium mb-1">نماذج الأعمال</div>
+
+    <div class="d-flex align-center justify-space-between mb-1">
+      <span class="text-body-1 font-weight-medium">نماذج الأعمال</span>
+      <span class="text-caption text-disabled">
+        {{ existingSamples.length + pending.length }} من {{ WORK_SAMPLE_LIMIT }}
+      </span>
+    </div>
     <div class="text-caption text-disabled mb-3">
-      حتى {{ WORK_SAMPLE_LIMIT }} صور — رفع صور جديدة يستبدل المجموعة كاملة
+      الصور الجديدة <strong>تُضاف</strong> للموجود ولا تستبدله. احذف صورة لتفريغ مكان.
     </div>
 
-    <VRow v-if="existingSamples.length" class="mb-2">
-      <VCol v-for="sample in existingSamples" :key="sample.id" cols="6" sm="3">
-        <div class="position-relative">
-          <VImg :src="sample.url" aspect-ratio="1" cover class="rounded" />
+    <VRow v-if="existingSamples.length || pending.length" class="mb-3">
+      <VCol
+        v-for="sample in existingSamples"
+        :key="`saved-${sample.id}`"
+        cols="6"
+        sm="3"
+      >
+        <VCard variant="outlined" class="sample" @click="preview = sample.url">
+          <VImg :src="sample.url" aspect-ratio="1" cover />
           <VBtn
             icon
             size="x-small"
             color="error"
             variant="flat"
-            class="position-absolute"
-            style="inset-block-start: 4px; inset-inline-end: 4px;"
-            @click="dropSample(sample)"
+            class="sample__x"
+            @click.stop="dropSample(sample)"
           >
             <VIcon icon="tabler-x" size="14" />
           </VBtn>
-        </div>
+        </VCard>
+      </VCol>
+
+      <VCol
+        v-for="(item, index) in pending"
+        :key="`new-${index}`"
+        cols="6"
+        sm="3"
+      >
+        <VCard variant="outlined" class="sample sample--new" @click="preview = item.url">
+          <VImg :src="item.url" aspect-ratio="1" cover />
+          <VBtn
+            icon
+            size="x-small"
+            color="error"
+            variant="flat"
+            class="sample__x"
+            @click.stop="dropPending(index)"
+          >
+            <VIcon icon="tabler-x" size="14" />
+          </VBtn>
+          <div class="sample__tag">جديدة</div>
+        </VCard>
       </VCol>
     </VRow>
 
-    <VFileInput
-      label="اختر نماذج أعمال"
+    <VBtn
+      v-if="room > 0"
+      block
+      variant="tonal"
+      color="primary"
+      prepend-icon="tabler-photo-plus"
+      @click="samplesInput?.click()"
+    >
+      إضافة صور ({{ room }} متبقّية)
+    </VBtn>
+
+    <VAlert
+      v-else
+      type="info"
+      variant="tonal"
+      density="compact"
+    >
+      بلغت الحد الأقصى — احذف صورة لإضافة غيرها
+    </VAlert>
+
+    <input
+      ref="samplesInput"
+      type="file"
       accept="image/jpeg,image/png,image/webp"
       multiple
-      chips
-      density="compact"
-      variant="outlined"
-      prepend-icon=""
-      prepend-inner-icon="tabler-photo-plus"
-      :error-messages="drawer.fieldError('work_samples')"
-      @change="pickSamples"
-    />
+      hidden
+      @change="addSamples"
+    >
+
+    <div v-if="drawer.fieldError('work_samples')" class="text-error text-caption mt-2">
+      {{ drawer.fieldError('work_samples') }}
+    </div>
+
+    <VDialog :model-value="preview !== null" max-width="720" @update:model-value="preview = null">
+      <VCard title="معاينة">
+        <VCardText>
+          <VImg :src="preview ?? ''" max-height="70vh" contain />
+        </VCardText>
+        <VCardActions class="px-6 pb-4">
+          <VSpacer />
+          <VBtn color="secondary" variant="tonal" @click="preview = null">إغلاق</VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </AppFormDrawer>
 </template>
+
+<style lang="scss" scoped>
+.sample {
+  position: relative;
+  cursor: pointer;
+
+  &__x {
+    position: absolute;
+    inset-block-start: 4px;
+    inset-inline-end: 4px;
+  }
+
+  &__tag {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline: 0;
+    padding-block: 1px;
+    font-size: 0.65rem;
+    text-align: center;
+    color: rgb(var(--v-theme-on-primary));
+    background-color: rgb(var(--v-theme-primary));
+  }
+
+  &--new {
+    border-color: rgb(var(--v-theme-primary));
+  }
+}
+</style>

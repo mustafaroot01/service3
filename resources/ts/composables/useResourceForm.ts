@@ -59,7 +59,9 @@ export function useResourceForm<T extends Record<string, any>>(options: Resource
       if (value instanceof File)
         body.append(key, value)
       else if (Array.isArray(value))
-        value.forEach(v => body.append(`${key}[]`, String(v)))
+        // A File inside an array must be appended as-is: String(file) yields
+        // "[object File]" and the server receives text where it expects upload.
+        value.forEach(v => body.append(`${key}[]`, v instanceof File ? v : String(v)))
       else if (typeof value === 'boolean')
         body.append(key, value ? '1' : '0')
       else
