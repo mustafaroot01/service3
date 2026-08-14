@@ -31,12 +31,4 @@ class UserFactory extends Factory
             'status' => UserStatus::ACTIVE,
         ])->save());
     }
-
-    public function unverified(): static
-    {
-        return $this->afterCreating(fn (User $user) => $user->forceFill([
-            'phone_verified_at' => null,
-            'status' => UserStatus::PENDING,
-        ])->save());
-    }
 }

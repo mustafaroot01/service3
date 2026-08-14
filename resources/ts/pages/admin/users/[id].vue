@@ -81,7 +81,6 @@ const dismissDeletion = async () => {
 
 const statusOptions = [
   { title: 'نشط', value: 'active' },
-  { title: 'قيد الانتظار', value: 'pending' },
   { title: 'غير نشط', value: 'inactive' },
   { title: 'موقوف', value: 'suspended' },
   { title: 'مجدول للحذف', value: 'scheduled_for_deletion' },
@@ -115,7 +114,7 @@ const genderLabel = (value: string | null) =>
   value === 'female' ? 'أنثى' : value === 'male' ? 'ذكر' : '—'
 
 const statusColor = (status: string) => ({
-  active: 'success', pending: 'warning', inactive: 'secondary', suspended: 'error',
+  active: 'success', inactive: 'secondary', suspended: 'error',
   scheduled_for_deletion: 'error',
   confirmed: 'info', assigned: 'primary', inspected: 'secondary', completed: 'success', cancelled: 'error',
 }[status] ?? 'secondary')
