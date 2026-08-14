@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserStatus;
 use App\Models\Admin;
 use App\Models\User;
 
@@ -16,7 +17,7 @@ beforeEach(function () {
     $this->admin = $admin;
 });
 
-it('records the request, ends the session, and keeps the account', function () {
+it('marks the account scheduled for deletion, ends the session, and keeps the data', function () {
     $this->withHeader('Authorization', "Bearer {$this->token}")
         ->postJson('/api/v1/customer/profile/delete-request')
         ->assertOk()
@@ -25,8 +26,12 @@ it('records the request, ends the session, and keeps the account', function () {
     $fresh = $this->customer->fresh();
 
     expect($fresh)->not->toBeNull()
+        ->and($fresh->status)->toBe(UserStatus::SCHEDULED_FOR_DELETION)
         ->and($fresh->deletion_requested_at)->not->toBeNull()
-        ->and($fresh->tokens()->count())->toBe(0);
+        ->and($fresh->tokens()->count())->toBe(0)
+        // Nothing is removed — the panel keeps counting him and his orders.
+        ->and($fresh->name)->toBe($this->customer->name)
+        ->and($fresh->phone)->toBe($this->customer->phone);
 
     app('auth')->forgetGuards();
 
@@ -34,7 +39,7 @@ it('records the request, ends the session, and keeps the account', function () {
         ->getJson('/api/v1/customer/profile')->assertUnauthorized();
 });
 
-it('lets the customer log back in while the request is pending', function () {
+it('refuses the login and says the account is scheduled for deletion', function () {
     $this->withHeader('Authorization', "Bearer {$this->token}")
         ->postJson('/api/v1/customer/profile/delete-request')->assertOk();
 
@@ -42,7 +47,19 @@ it('lets the customer log back in while the request is pending', function () {
 
     $this->postJson('/api/v1/customer/auth/login', [
         'phone' => $this->customer->phone, 'password' => 'password',
-    ])->assertOk();
+    ])
+        ->assertStatus(422)
+        ->assertJsonPath('errors.phone.0', 'حسابك مجدول للحذف');
+});
+
+it('keeps the orders and the counters untouched', function () {
+    $before = User::count();
+
+    $this->withHeader('Authorization', "Bearer {$this->token}")
+        ->postJson('/api/v1/customer/profile/delete-request')->assertOk();
+
+    expect(User::count())->toBe($before)
+        ->and(User::find($this->customer->id))->not->toBeNull();
 });
 
 it('refuses a second request while one is pending', function () {
@@ -58,7 +75,7 @@ it('refuses a second request while one is pending', function () {
         ->assertJsonPath('errors.account.0', 'طلب حذف الحساب مُرسل مسبقاً وقيد المراجعة');
 });
 
-it('shows the request to the admin and lets it be dismissed', function () {
+it('reopens the account when the admin dismisses the request', function () {
     $this->withHeader('Authorization', "Bearer {$this->token}")
         ->postJson('/api/v1/customer/profile/delete-request')->assertOk();
 
@@ -76,6 +93,27 @@ it('shows the request to the admin and lets it be dismissed', function () {
 
     $this->actingAs($this->admin, 'admin')
         ->deleteJson("/api/v1/admin/users/{$this->customer->id}/deletion-request")
+        ->assertOk()
+        ->assertJsonPath('data.deletion_requested', false)
+        ->assertJsonPath('data.status', 'active');
+
+    expect($this->customer->fresh()->deletion_requested_at)->toBeNull();
+
+    app('auth')->forgetGuards();
+
+    $this->postJson('/api/v1/customer/auth/login', [
+        'phone' => $this->customer->phone, 'password' => 'password',
+    ])->assertOk();
+});
+
+it('clears the request when the admin sets any other status', function () {
+    $this->withHeader('Authorization', "Bearer {$this->token}")
+        ->postJson('/api/v1/customer/profile/delete-request')->assertOk();
+
+    app('auth')->forgetGuards();
+
+    $this->actingAs($this->admin, 'admin')
+        ->patchJson("/api/v1/admin/users/{$this->customer->id}/status", ['status' => 'active'])
         ->assertOk()
         ->assertJsonPath('data.deletion_requested', false);
 

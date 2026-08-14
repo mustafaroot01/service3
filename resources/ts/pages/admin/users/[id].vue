@@ -84,6 +84,7 @@ const statusOptions = [
   { title: 'قيد الانتظار', value: 'pending' },
   { title: 'غير نشط', value: 'inactive' },
   { title: 'موقوف', value: 'suspended' },
+  { title: 'مجدول للحذف', value: 'scheduled_for_deletion' },
 ]
 
 const orderHeaders: TableHeader[] = [
@@ -115,6 +116,7 @@ const genderLabel = (value: string | null) =>
 
 const statusColor = (status: string) => ({
   active: 'success', pending: 'warning', inactive: 'secondary', suspended: 'error',
+  scheduled_for_deletion: 'error',
   confirmed: 'info', assigned: 'primary', inspected: 'secondary', completed: 'success', cancelled: 'error',
 }[status] ?? 'secondary')
 

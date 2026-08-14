@@ -57,7 +57,11 @@ class UserService extends BaseCrudService
             ]);
         }
 
-        $user->forceFill(['deletion_requested_at' => null])->save();
+        // The request is what closed the account, so undoing it reopens it.
+        $user->forceFill([
+            'status' => UserStatus::ACTIVE,
+            'deletion_requested_at' => null,
+        ])->save();
 
         return $this->hydrate($user->refresh());
     }
@@ -70,8 +74,14 @@ class UserService extends BaseCrudService
             ]);
         }
 
-        $user->status = $status;
-        $user->save();
+        // The two must move together: leaving the timestamp behind would show
+        // a "deletion requested" badge on an account the admin just reopened.
+        $user->forceFill([
+            'status' => $status,
+            'deletion_requested_at' => $status === UserStatus::SCHEDULED_FOR_DELETION
+                ? ($user->deletion_requested_at ?? now())
+                : null,
+        ])->save();
 
         // The status is only read at login, so a suspended customer would keep
         // ordering with the token he already holds until it is taken away.

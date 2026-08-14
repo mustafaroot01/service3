@@ -98,7 +98,11 @@ class CustomerAuthService
             ]);
         }
 
-        $user->forceFill(['deletion_requested_at' => now()])->save();
+        $user->forceFill([
+            'status' => UserStatus::SCHEDULED_FOR_DELETION,
+            'deletion_requested_at' => now(),
+        ])->save();
+
         $user->tokens()->delete();
     }
 
@@ -116,6 +120,12 @@ class CustomerAuthService
         if ($user->phone_verified_at === null) {
             throw ValidationException::withMessages([
                 'phone' => 'لم يتم توثيق رقمك بعد، اطلب رمز التحقق',
+            ]);
+        }
+
+        if ($user->status === UserStatus::SCHEDULED_FOR_DELETION) {
+            throw ValidationException::withMessages([
+                'phone' => 'حسابك مجدول للحذف',
             ]);
         }
 
