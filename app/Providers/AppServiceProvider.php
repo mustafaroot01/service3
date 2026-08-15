@@ -44,11 +44,17 @@ class AppServiceProvider extends ServiceProvider
     {
         $phone = fn (Request $request) => Phone::international($request->input('phone')) ?? $request->ip();
 
+        // Laravel's own answer is the English "Too Many Attempts.", and this one
+        // is read by a customer waiting on a code, not by a developer.
+        $tooMany = fn (string $message) => fn () => ApiResponse::error($message, ['phone' => [$message]], 429);
+
         RateLimiter::for('otp-send', fn (Request $request) => Limit::perMinutes(10, 4)
-            ->by('otp-send:'.$phone($request)));
+            ->by('otp-send:'.$phone($request))
+            ->response($tooMany('طلبت رموزاً كثيرة، حاول بعد عشر دقائق')));
 
         RateLimiter::for('otp-verify', fn (Request $request) => Limit::perMinutes(10, 8)
-            ->by('otp-verify:'.$phone($request)));
+            ->by('otp-verify:'.$phone($request))
+            ->response($tooMany('حاولت مرات كثيرة، انتظر عشر دقائق ثم أعد المحاولة')));
 
         /**
          * Counted per phone, never per address. Iraqi carriers put thousands of
