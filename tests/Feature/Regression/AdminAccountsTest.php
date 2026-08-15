@@ -194,3 +194,116 @@ it('cuts off a customer the moment his account is disabled', function () {
     $this->withHeader('Authorization', "Bearer {$token}")
         ->getJson('/api/v1/customer/profile')->assertUnauthorized();
 });
+
+/**
+ * Status is only read at the login door. Whatever revokes access must also
+ * take away the key the admin is already holding, or "disabled" means nothing
+ * until he chooses to log out.
+ */
+it('cuts off an admin disabled through the edit form, not only through the status button', function () {
+    $token = $this->manager->createToken('admin-token')->plainTextToken;
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/admin/users?per_page=1')->assertOk();
+
+    app('auth')->forgetGuards();
+
+    $this->actingAs($this->superAdmin, 'admin')
+        ->putJson("/api/v1/admin/admins/{$this->manager->id}", [
+            'name' => $this->manager->name,
+            'email' => $this->manager->email,
+            'status' => AdminStatus::INACTIVE->value,
+            'role_id' => $this->managerRole->id,
+        ])->assertOk();
+
+    app('auth')->forgetGuards();
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/admin/users?per_page=1')->assertUnauthorized();
+});
+
+it('ends the session when an admin is moved to another role', function () {
+    $token = $this->manager->createToken('admin-token')->plainTextToken;
+
+    $this->actingAs($this->superAdmin, 'admin')
+        ->putJson("/api/v1/admin/admins/{$this->manager->id}", [
+            'name' => $this->manager->name,
+            'email' => $this->manager->email,
+            'status' => AdminStatus::ACTIVE->value,
+            'role_id' => $this->viewerRole->id,
+        ])->assertOk();
+
+    app('auth')->forgetGuards();
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/admin/users?per_page=1')->assertUnauthorized();
+});
+
+it('ends the session when an admin password is changed for him', function () {
+    $token = $this->manager->createToken('admin-token')->plainTextToken;
+
+    $this->actingAs($this->superAdmin, 'admin')
+        ->putJson("/api/v1/admin/admins/{$this->manager->id}", [
+            'name' => $this->manager->name,
+            'email' => $this->manager->email,
+            'status' => AdminStatus::ACTIVE->value,
+            'role_id' => $this->managerRole->id,
+            'password' => 'a-brand-new-one',
+        ])->assertOk();
+
+    app('auth')->forgetGuards();
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/admin/users?per_page=1')->assertUnauthorized();
+});
+
+it('keeps the session alive when nothing about access changed', function () {
+    $token = $this->manager->createToken('admin-token')->plainTextToken;
+
+    $this->actingAs($this->superAdmin, 'admin')
+        ->putJson("/api/v1/admin/admins/{$this->manager->id}", [
+            'name' => 'اسم جديد',
+            'email' => $this->manager->email,
+            'status' => AdminStatus::ACTIVE->value,
+            'role_id' => $this->managerRole->id,
+        ])->assertOk();
+
+    app('auth')->forgetGuards();
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/admin/users?per_page=1')->assertOk();
+});
+
+it('refuses to sign up over a number that already has an account, verified or not', function () {
+    $victim = User::factory()->create([
+        'name' => 'صاحب الحساب الأصلي',
+        'phone' => '9647712345678',
+        'password' => 'his-own-password',
+    ]);
+
+    $victim->forceFill(['phone_verified_at' => null])->save();
+
+    $governorate = \App\Models\Governorate::create(['name' => 'بغداد', 'is_active' => true]);
+    $district = \App\Models\District::create([
+        'governorate_id' => $governorate->id, 'name' => 'الكرخ', 'is_active' => true,
+    ]);
+
+    $this->postJson('/api/v1/customer/auth/register', [
+        'name' => 'مهاجم',
+        'gender' => 'female',
+        'phone' => '07712345678',
+        'password' => 'attacker-pass',
+        'password_confirmation' => 'attacker-pass',
+        'governorate_id' => $governorate->id,
+        'district_id' => $district->id,
+        'terms_accepted' => true,
+    ])->assertStatus(422)->assertJsonValidationErrors('phone');
+
+    expect($victim->fresh()->name)->toBe('صاحب الحساب الأصلي');
+
+    app('auth')->forgetGuards();
+
+    $this->postJson('/api/v1/customer/auth/login', [
+        'phone' => '07712345678', 'password' => 'attacker-pass',
+    ])->assertStatus(422);
+});

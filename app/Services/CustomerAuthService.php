@@ -14,23 +14,29 @@ class CustomerAuthService
 {
     private const TOKEN_NAME = 'customer';
 
-    public function __construct(private readonly OtpService $otp)
-    {
-    }
+    public function __construct(private readonly OtpService $otp) {}
 
     public function register(array $data): array
     {
         $phone = Phone::international($data['phone']);
-        $existing = User::where('phone', $phone)->first();
 
-        if ($existing && $existing->phone_verified_at !== null) {
+        /**
+         * A taken number is refused outright. Signing up over an existing row
+         * used to be allowed while it was unverified, but that let anyone who
+         * knew the number overwrite the name and the password on someone
+         * else's account — and since every account is opened verified, the
+         * branch only ever served as that handhold.
+         */
+        if (User::where('phone', $phone)->exists()) {
             throw ValidationException::withMessages([
                 'phone' => 'رقم الهاتف مسجّل بالفعل، سجّل الدخول أو استعد كلمة السر',
             ]);
         }
 
-        $user = DB::transaction(function () use ($data, $phone, $existing) {
-            $attributes = [
+        $user = DB::transaction(function () use ($data, $phone) {
+            $user = new User;
+
+            $user->fill([
                 'name' => $data['name'],
                 'gender' => $data['gender'],
                 'phone' => $phone,
@@ -38,10 +44,7 @@ class CustomerAuthService
                 'governorate_id' => $data['governorate_id'],
                 'district_id' => $data['district_id'],
                 'terms_accepted_at' => now(),
-            ];
-
-            $user = $existing ?: new User;
-            $user->fill($attributes);
+            ]);
 
             // The number is taken as given at signup: no code is sent and the
             // account opens straight away, so registration never waits on the
@@ -56,36 +59,27 @@ class CustomerAuthService
             return $user;
         });
 
-        return $this->issueToken($user);
+        // No token here: signing up and signing in are two deliberate steps,
+        // so the app sends the new customer to the login screen.
+        return ['phone' => $user->phone];
     }
 
-    public function resend(string $phone, OtpPurpose $purpose): array
+    /**
+     * Only for password recovery. A code is never sent for signup any more, so
+     * resending is the same act as asking for one — and both refuse unknown
+     * numbers, otherwise anyone could make the server send a WhatsApp message
+     * to any Iraqi number at our expense.
+     */
+    public function resend(string $phone): array
     {
-        $phone = Phone::international($phone);
-
-        $this->otp->send($phone, $purpose);
-
-        return [
-            'phone' => $phone,
-            'resend_in' => $this->otp->secondsUntilResend($phone, $purpose),
-        ];
+        return $this->forgotPassword($phone);
     }
 
-    public function verifyRegistration(string $phone, string $code): array
+    private function requireAccountFor(string $phone): User
     {
-        $phone = Phone::international($phone);
-        $user = User::where('phone', $phone)->firstOr(fn () => throw ValidationException::withMessages([
+        return User::where('phone', $phone)->firstOr(fn () => throw ValidationException::withMessages([
             'phone' => 'لا يوجد حساب بهذا الرقم',
         ]));
-
-        $this->otp->verify($phone, OtpPurpose::REGISTER, $code);
-
-        $user->forceFill([
-            'phone_verified_at' => now(),
-            'status' => UserStatus::ACTIVE,
-        ])->save();
-
-        return $this->issueToken($user);
     }
 
     /**
@@ -138,11 +132,7 @@ class CustomerAuthService
     {
         $phone = Phone::international($phone);
 
-        if (! User::where('phone', $phone)->whereNotNull('phone_verified_at')->exists()) {
-            throw ValidationException::withMessages([
-                'phone' => 'لا يوجد حساب موثّق بهذا الرقم',
-            ]);
-        }
+        $this->requireAccountFor($phone);
 
         $this->otp->send($phone, OtpPurpose::RESET);
 
@@ -152,12 +142,14 @@ class CustomerAuthService
         ];
     }
 
-    public function resetPassword(string $phone, string $code, string $password): array
+    /**
+     * Every existing session dies with the old password, and no new one is
+     * handed out: whoever reset it proves the new password on the login screen.
+     */
+    public function resetPassword(string $phone, string $code, string $password): void
     {
         $phone = Phone::international($phone);
-        $user = User::where('phone', $phone)->firstOr(fn () => throw ValidationException::withMessages([
-            'phone' => 'لا يوجد حساب بهذا الرقم',
-        ]));
+        $user = $this->requireAccountFor($phone);
 
         $this->otp->verify($phone, OtpPurpose::RESET, $code);
 
@@ -166,8 +158,6 @@ class CustomerAuthService
             $user->save();
             $user->tokens()->delete();
         });
-
-        return $this->issueToken($user);
     }
 
     private function issueToken(User $user): array

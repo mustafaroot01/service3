@@ -34,6 +34,17 @@ const credentials = ref({ email: '', password: '' })
 const errors = ref<Record<string, string | undefined>>({})
 const loginError = ref<string | null>(null)
 
+/**
+ * `?to=` reaches us straight from the address bar. Anything but a single-slash
+ * path is someone else's origin — `//evil.com` resolves as a location the
+ * browser then refuses to push, which strands the reader on a blank screen.
+ */
+const destination = () => {
+  const to = String(route.query.to ?? '')
+
+  return /^\/(?!\/)/.test(to) ? to : '/'
+}
+
 const login = async () => {
   isLoading.value = true
   loginError.value = null
@@ -57,7 +68,7 @@ const login = async () => {
     ability.update(abilityRules)
 
     await nextTick(() => {
-      router.replace(route.query.to ? String(route.query.to) : '/')
+      router.replace(destination())
     })
   }
   catch (err: any) {

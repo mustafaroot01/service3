@@ -355,10 +355,11 @@ Authorization: Bearer <token>
 ### دورة التسجيل
 
 ```
-POST /auth/register   →  الحساب يُفتح فوراً ويرجع التوكن  ←  المستخدم داخل
+POST /auth/register   →  201، والرد فيه الرقم فقط  →  انقل المستخدم لشاشة الدخول
+POST /auth/login      →  200 + التوكن              ←  المستخدم داخل
 ```
 
-**خطوة واحدة، بلا رمز تحقق.** الحساب يصير `active` والرقم يُعتبر موثّقاً لحظة التسجيل، فلا شيء ينتظر وصول رسالة.
+**خطوتان منفصلتان، وبلا رمز تحقق.** الحساب يُفتح `active` والرقم يُعتبر موثّقاً لحظة التسجيل — لكن **التسجيل لا يرجع توكن**. بعد `201` انقل المستخدم إلى شاشة الدخول وعبّئ له الرقم، ويكتب كلمة السر التي اختارها للتو.
 
 > رمز التحقق باقٍ لاستعادة كلمة السر فقط (القسم ٤).
 
@@ -388,90 +389,52 @@ POST /auth/register   →  الحساب يُفتح فوراً ويرجع الت�
 | `district_id` | مطلوب · من `GET /customer/governorates/{governorate_id}/districts` — **يتبع المحافظة المختارة** |
 | `terms_accepted` | مطلوب · `true` |
 
-**الرد `201` — نفس شكل رد الدخول، ومعه التوكن مباشرة:**
+**الرد `201`:**
 ```json
 {
   "success": true,
-  "message": "تم إنشاء حسابك بنجاح",
+  "message": "تم إنشاء حسابك بنجاح، سجّل الدخول للمتابعة",
   "data": {
-    "user": {
-      "id": 11,
-      "name": "زائر تجريبي",
-      "phone": "9647719998877",
-      "status": "active",
-      "status_label": "نشط",
-      "phone_verified": true,
-      "…": "بقية حقول المستخدم"
-    },
-    "token": "12|xxxxxxxxxxxxxxxxxxxx",
-    "token_type": "Bearer"
+    "phone": "9647719998877"
   }
 }
 ```
 
-> **احفظ التوكن وادخل للتطبيق مباشرة.** لا شاشة تحقق ولا انتظار رسالة.
+> **لا يوجد توكن في هذا الرد.** استعمل `data.phone` لتعبئة شاشة الدخول، ثم نادِ `POST /customer/auth/login`.
 
-### `POST /customer/auth/verify-otp`
-
-**الطلب:**
-```json
-{ "phone": "07719998877", "code": "123456" }
-```
-
-**الرد `200` — هنا يستلم التطبيق التوكن:**
-```json
-{
-  "success": true,
-  "message": "تم توثيق رقمك بنجاح",
-  "data": {
-    "user": {
-      "id": 5,
-      "name": "زائر تجريبي",
-      "gender": "male",
-      "phone": "9647719998877",
-      "phone_verified": true,
-      "status": "active",
-      "status_label": "نشط",
-      "governorate_id": 1,
-      "governorate": {
-        "id": 1,
-        "name": "بغداد"
-      },
-      "district_id": 1,
-      "district": {
-        "id": 1,
-        "name": "مركز بغداد"
-      },
-      "created_at": "2026-08-14T15:25:41+03:00"
-    },
-    "token": "86|2wDGjL7lnAvMJUlzqDLyvjxumaZKc9zqJM3MIdcZ64cdafa5",
-    "token_type": "Bearer"
-  }
-}
-```
-
-**رمز خاطئ `422`:**
+**رقم مسجّل مسبقاً `422`:**
 ```json
 {
   "success": false,
-  "message": "الرمز غير صحيح",
+  "message": "البيانات المدخلة غير صحيحة",
   "errors": {
-    "otp": [
-      "INVALID_CODE"
+    "phone": [
+      "رقم الهاتف مسجّل بالفعل، سجّل الدخول أو استعد كلمة السر"
     ]
   }
 }
 ```
 
-| `errors.otp[0]` | المعنى |
-|---|---|
-| `INVALID_CODE` | الرمز غير صحيح |
-| `EXPIRED` | انتهت صلاحية الرمز — اطلب رمزاً جديداً |
-| `NOT_CONFIGURED` | خدمة الرسائل غير مهيّأة عند الإدارة |
-
 ### `POST /customer/auth/resend-otp`
 
+إعادة إرسال رمز **استعادة كلمة السر** — نفس عمل `forgot-password` تماماً، ومخصّص لزر «لم يصلني الرمز» في شاشة الاستعادة. **لا علاقة له بالتسجيل.**
+
 **الطلب:** `{ "phone": "07719998877" }`
+
+**الرد `200`:** نفس رد `forgot-password` (القسم ٤).
+
+**رقم بلا حساب `422`:**
+```json
+{
+  "success": false,
+  "message": "البيانات المدخلة غير صحيحة",
+  "errors": {
+    "phone": [
+      "لا يوجد حساب بهذا الرقم"
+    ]
+  }
+}
+```
 
 **قبل انتهاء المهلة `422`:**
 ```json
@@ -485,6 +448,13 @@ POST /auth/register   →  الحساب يُفتح فوراً ويرجع الت�
   }
 }
 ```
+
+| `errors.otp[0]` | المعنى |
+|---|---|
+| `INVALID_CODE` | الرمز غير صحيح |
+| `EXPIRED` | انتهت صلاحية الرمز — اطلب رمزاً جديداً |
+| `COOLDOWN` | لم تمرّ ٦٠ ثانية على آخر إرسال |
+| `NOT_CONFIGURED` | خدمة الرسائل غير مهيّأة عند الإدارة |
 
 ### `POST /customer/auth/login`
 
@@ -585,8 +555,11 @@ POST /auth/register   →  الحساب يُفتح فوراً ويرجع الت�
 
 ```
 ١) POST /auth/forgot-password  → يُرسل رمز على واتساب
-٢) POST /auth/reset-password   → رمز + كلمة سر جديدة ← يرجع توكن جديد
+٢) POST /auth/reset-password   → رمز + كلمة سر جديدة ← بلا توكن
+٣) POST /auth/login            → بكلمة السر الجديدة  ← المستخدم داخل
 ```
+
+> إعادة التعيين **لا ترجع توكن**، وتُلغي كل جلسات الحساب. بعد `200` انقل المستخدم لشاشة الدخول.
 
 ### `POST /customer/auth/forgot-password`
 
@@ -604,7 +577,7 @@ POST /auth/register   →  الحساب يُفتح فوراً ويرجع الت�
 }
 ```
 
-> إن لم يكن الرقم مسجّلاً وموثّقاً: `422` مع `"لا يوجد حساب موثّق بهذا الرقم"`.
+> إن لم يكن الرقم مسجّلاً: `422` مع `"لا يوجد حساب بهذا الرقم"` — الخادم لا يرسل رسالة إلى رقم بلا حساب.
 
 ### `POST /customer/auth/reset-password`
 
@@ -618,39 +591,29 @@ POST /auth/register   →  الحساب يُفتح فوراً ويرجع الت�
 }
 ```
 
-**الرد `200` — يرجع توكناً جديداً، فالمستخدم يدخل مباشرة:**
+**الرد `200`:**
 ```json
 {
   "success": true,
-  "message": "تم تغيير كلمة السر بنجاح",
-  "data": {
-    "user": {
-      "id": 5,
-      "name": "زائر تجريبي",
-      "gender": "male",
-      "phone": "9647719998877",
-      "phone_verified": true,
-      "status": "active",
-      "status_label": "نشط",
-      "governorate_id": 1,
-      "governorate": {
-        "id": 1,
-        "name": "بغداد"
-      },
-      "district_id": 1,
-      "district": {
-        "id": 1,
-        "name": "مركز بغداد"
-      },
-      "created_at": "2026-08-14T15:25:41+03:00"
-    },
-    "token": "88|mK1WexlklYgY5GtAVxtGTRZ7UkNB79OH2mHjGz7N262d242e",
-    "token_type": "Bearer"
+  "message": "تم تغيير كلمة السر، سجّل الدخول بكلمتك الجديدة",
+  "data": null
+}
+```
+
+**رمز خاطئ `422`:**
+```json
+{
+  "success": false,
+  "message": "الرمز غير صحيح",
+  "errors": {
+    "otp": [
+      "INVALID_CODE"
+    ]
   }
 }
 ```
 
-> **كل توكنات الجهاز الأخرى تُلغى** عند تغيير كلمة السر.
+> **كل توكنات الحساب تُلغى** عند تغيير كلمة السر — على كل الأجهزة، بما فيها الجهاز الحالي.
 
 ---
 
@@ -1447,8 +1410,7 @@ POST /customer/profile/delete-request
 | 🌐 | `GET /customer/blog` · `/{id}` | المدوّنة |
 | 🌐 | `GET /customer/legal-pages/{key}` | الخصوصية والشروط |
 | 🌐 | `POST /customer/auth/register` | تسجيل |
-| 🌐 | `POST /customer/auth/verify-otp` | تحقق ← توكن |
-| 🌐 | `POST /customer/auth/resend-otp` | إعادة إرسال الرمز |
+| 🌐 | `POST /customer/auth/resend-otp` | إعادة إرسال رمز الاستعادة |
 | 🌐 | `POST /customer/auth/login` | دخول |
 | 🌐 | `POST /customer/auth/forgot-password` | نسيت كلمة السر |
 | 🌐 | `POST /customer/auth/reset-password` | تعيين كلمة سر جديدة |

@@ -1,10 +1,11 @@
 <?php
 
 use App\Enums\UserStatus;
-use App\Models\Governorate;
-use App\Models\District;
 use App\Models\Admin;
+use App\Models\District;
+use App\Models\Governorate;
 use App\Models\User;
+use App\Services\OtpService;
 
 /**
  * The request records a wish and ends the session — it must never remove the
@@ -138,8 +139,8 @@ it('needs a token — a visitor cannot request anyone deleted', function () {
     $this->postJson('/api/v1/customer/profile/delete-request')->assertUnauthorized();
 });
 
-it('opens the account at signup without waiting on a code', function () {
-    $this->postJson('/api/v1/customer/auth/register', [
+it('opens the account at signup but hands back no session', function () {
+    $response = $this->postJson('/api/v1/customer/auth/register', [
         'name' => 'زبون جديد',
         'gender' => 'male',
         'phone' => '07766600123',
@@ -148,22 +149,57 @@ it('opens the account at signup without waiting on a code', function () {
         'governorate_id' => $this->governorate->id,
         'district_id' => $this->district->id,
         'terms_accepted' => true,
-    ])
-        ->assertCreated()
-        ->assertJsonPath('data.user.status', 'active')
-        ->assertJsonPath('data.user.phone_verified', true)
-        ->assertJsonStructure(['data' => ['user', 'token', 'token_type']]);
+    ])->assertCreated()->assertJsonPath('data.phone', '9647766600123');
+
+    expect($response->json('data'))->not->toHaveKey('token');
 
     $created = User::where('phone', '9647766600123')->sole();
 
     expect($created->phone_verified_at)->not->toBeNull()
-        ->and($created->status)->toBe(UserStatus::ACTIVE);
+        ->and($created->status)->toBe(UserStatus::ACTIVE)
+        ->and($created->tokens()->count())->toBe(0);
 
     app('auth')->forgetGuards();
 
-    // The account works straight away — no verification step in between.
     $this->postJson('/api/v1/customer/auth/login', [
         'phone' => '07766600123', 'password' => 'hoame-2026',
+    ])->assertOk()->assertJsonStructure(['data' => ['user', 'token', 'token_type']]);
+});
+
+it('refuses to send a code to a number that has no account', function () {
+    foreach (['resend-otp', 'forgot-password'] as $endpoint) {
+        app('auth')->forgetGuards();
+
+        $this->postJson("/api/v1/customer/auth/{$endpoint}", ['phone' => '07733399999'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('phone');
+    }
+});
+
+it('sends the customer back to the login screen after a password reset', function () {
+    config(['services.otp.fake' => true]);
+
+    $this->customer->forceFill(['phone_verified_at' => now()])->save();
+
+    $this->postJson('/api/v1/customer/auth/forgot-password', ['phone' => $this->customer->phone])
+        ->assertOk();
+
+    app('auth')->forgetGuards();
+
+    $response = $this->postJson('/api/v1/customer/auth/reset-password', [
+        'phone' => $this->customer->phone,
+        'code' => OtpService::FAKE_CODE,
+        'password' => 'hoame-2027',
+        'password_confirmation' => 'hoame-2027',
+    ])->assertOk();
+
+    expect($response->json('data'))->toBeNull()
+        ->and($this->customer->fresh()->tokens()->count())->toBe(0);
+
+    app('auth')->forgetGuards();
+
+    $this->postJson('/api/v1/customer/auth/login', [
+        'phone' => $this->customer->phone, 'password' => 'hoame-2027',
     ])->assertOk();
 });
 

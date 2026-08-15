@@ -23,9 +23,6 @@ Route::prefix('customer')->name('customer.')->group(function () {
         Route::post('resend-otp', [AuthController::class, 'resendOtp'])
             ->middleware('throttle:otp-send')->name('resend-otp');
 
-        Route::post('verify-otp', [AuthController::class, 'verifyOtp'])
-            ->middleware('throttle:otp-verify')->name('verify-otp');
-
         Route::post('login', [AuthController::class, 'login'])->name('login');
 
         Route::post('forgot-password', [AuthController::class, 'forgotPassword'])

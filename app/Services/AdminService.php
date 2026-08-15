@@ -67,7 +67,9 @@ class AdminService extends BaseCrudService
         $this->guardSelfLockout($model, $data);
         $this->guardLastSuperAdmin($model, $data);
 
-        DB::transaction(function () use ($model, $data) {
+        $roleChanged = (int) $data['role_id'] !== (int) $model->loadMissing('roles')->roles->first()?->id;
+
+        DB::transaction(function () use ($model, $data, $roleChanged) {
             $model->fill([
                 'name' => $data['name'],
                 'email' => $data['email'],
@@ -81,6 +83,16 @@ class AdminService extends BaseCrudService
 
             $model->save();
             $model->syncRoles([$this->role($data['role_id'])]);
+
+            /**
+             * The status is only read at login, so disabling an admin from this
+             * form would lock him out of the door while the session he already
+             * has keeps working. A new password and a new role are the same
+             * story: both are meant to end the old session, not sit beside it.
+             */
+            if ($model->status !== AdminStatus::ACTIVE || $roleChanged || ! empty($data['password'])) {
+                $model->tokens()->delete();
+            }
         });
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();

@@ -18,6 +18,11 @@ export type CookieRef<T> = Ref<T>
 const CookieDefaults: CookieOptions<any> = {
   path: '/',
   watch: true,
+
+  // The session token lives in here, so it must not ride along on a foreign
+  // site's request, and on a served panel it must never leave over plain HTTP.
+  sameSite: 'lax',
+  secure: typeof location !== 'undefined' && location.protocol === 'https:',
   decode: val => destr(decodeURIComponent(val)),
   encode: val => encodeURIComponent(typeof val === 'string' ? val : JSON.stringify(val)),
 }

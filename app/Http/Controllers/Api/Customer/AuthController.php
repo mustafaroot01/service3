@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers\Api\Customer;
 
-use App\Enums\OtpPurpose;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Customer\LoginRequest;
 use App\Http\Requests\Api\Customer\PhoneRequest;
 use App\Http\Requests\Api\Customer\RegisterRequest;
 use App\Http\Requests\Api\Customer\ResetPasswordRequest;
-use App\Http\Requests\Api\Customer\VerifyOtpRequest;
 use App\Http\Resources\Api\Customer\UserResource;
 use App\Services\CustomerAuthService;
 use App\Support\ApiResponse;
@@ -17,35 +15,22 @@ use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
-    public function __construct(private readonly CustomerAuthService $auth)
-    {
-    }
+    public function __construct(private readonly CustomerAuthService $auth) {}
 
     public function register(RegisterRequest $request): JsonResponse
     {
-        return $this->authPayload(
+        return ApiResponse::created(
             $this->auth->register($request->validated()),
-            'تم إنشاء حسابك بنجاح',
-            201
+            'تم إنشاء حسابك بنجاح، سجّل الدخول للمتابعة'
         );
     }
 
     public function resendOtp(PhoneRequest $request): JsonResponse
     {
         return ApiResponse::success(
-            $this->auth->resend($request->validated('phone'), OtpPurpose::REGISTER),
+            $this->auth->resend($request->validated('phone')),
             'تم إرسال رمز جديد'
         );
-    }
-
-    public function verifyOtp(VerifyOtpRequest $request): JsonResponse
-    {
-        $result = $this->auth->verifyRegistration(
-            $request->validated('phone'),
-            $request->validated('code')
-        );
-
-        return $this->authPayload($result, 'تم توثيق رقمك بنجاح');
     }
 
     public function login(LoginRequest $request): JsonResponse
@@ -68,13 +53,13 @@ class AuthController extends Controller
 
     public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
-        $result = $this->auth->resetPassword(
+        $this->auth->resetPassword(
             $request->validated('phone'),
             $request->validated('code'),
             $request->validated('password')
         );
 
-        return $this->authPayload($result, 'تم تغيير كلمة السر بنجاح');
+        return ApiResponse::success(null, 'تم تغيير كلمة السر، سجّل الدخول بكلمتك الجديدة');
     }
 
     public function me(Request $request): JsonResponse

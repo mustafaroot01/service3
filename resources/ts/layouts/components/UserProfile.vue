@@ -1,39 +1,40 @@
 <script setup lang="ts">
-import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
+interface AdminCookie {
+  id: number
+  name: string
+  email: string
+  status_label?: string
+  role?: { id: number; label: string } | null
+}
 
 const router = useRouter()
 const ability = useAbility()
 
-// TODO: Get type from backend
-const userData = useCookie<any>('userData')
+const userData = useCookie<AdminCookie | null>('userData')
+const isLoggingOut = ref(false)
 
 const logout = async () => {
-  // Remove "accessToken" from cookie
-  useCookie('accessToken').value = null
+  isLoggingOut.value = true
 
-  // Remove "userData" from cookie
+  // The server keeps issuing tokens until one is spent: clearing the cookie
+  // alone would leave a working key behind on every machine he ever used.
+  try {
+    await $api('/admin/auth/logout', { method: 'POST' })
+  }
+  catch {
+    // A rejected token is already dead — the local cleanup below still runs.
+  }
+
+  useCookie('accessToken').value = null
   userData.value = null
 
-  // Redirect to login page
   await router.push('/login')
 
-  // ℹ️ We had to remove abilities in then block because if we don't nav menu items mutation is visible while redirecting user to login page
-  // Remove "userAbilities" from cookie
   useCookie('userAbilityRules').value = null
-
-  // Reset ability to initial ability
   ability.update([])
-}
 
-const userProfileList = [
-  { type: 'divider' },
-  { type: 'navItem', icon: 'tabler-user', title: 'Profile', to: { name: 'apps-user-view-id', params: { id: 21 } } },
-  { type: 'navItem', icon: 'tabler-settings', title: 'Settings', to: { name: 'pages-account-settings-tab', params: { tab: 'account' } } },
-  { type: 'navItem', icon: 'tabler-file-dollar', title: 'Billing Plan', to: { name: 'pages-account-settings-tab', params: { tab: 'billing-plans' } }, badgeProps: { color: 'error', content: '4' } },
-  { type: 'divider' },
-  { type: 'navItem', icon: 'tabler-currency-dollar', title: 'Pricing', to: { name: 'pages-pricing' } },
-  { type: 'navItem', icon: 'tabler-question-mark', title: 'FAQ', to: { name: 'pages-faq' } },
-]
+  isLoggingOut.value = false
+}
 </script>
 
 <template>
@@ -46,118 +47,67 @@ const userProfileList = [
     offset-y="2"
     color="success"
   >
-    <VAvatar
-      size="38"
-      class="cursor-pointer"
-      :color="!(userData && userData.avatar) ? 'primary' : undefined"
-      :variant="!(userData && userData.avatar) ? 'tonal' : undefined"
-    >
-      <VImg
-        v-if="userData && userData.avatar"
-        :src="userData.avatar"
-      />
-      <VIcon
-        v-else
-        icon="tabler-user"
-      />
+    <VAvatar size="38" class="cursor-pointer" color="primary" variant="tonal">
+      {{ avatarText(userData.name) }}
 
-      <!-- SECTION Menu -->
       <VMenu
         activator="parent"
-        width="240"
+        width="250"
         location="bottom end"
         offset="12px"
       >
         <VList>
           <VListItem>
-            <div class="d-flex gap-2 align-center">
-              <VListItemAction>
-                <VBadge
-                  dot
-                  location="bottom right"
-                  offset-x="3"
-                  offset-y="3"
-                  color="success"
-                  bordered
-                >
-                  <VAvatar
-                    :color="!(userData && userData.avatar) ? 'primary' : undefined"
-                    :variant="!(userData && userData.avatar) ? 'tonal' : undefined"
-                  >
-                    <VImg
-                      v-if="userData && userData.avatar"
-                      :src="userData.avatar"
-                    />
-                    <VIcon
-                      v-else
-                      icon="tabler-user"
-                    />
-                  </VAvatar>
-                </VBadge>
-              </VListItemAction>
+            <div class="d-flex gap-3 align-center">
+              <VAvatar color="primary" variant="tonal">
+                {{ avatarText(userData.name) }}
+              </VAvatar>
 
-              <div>
-                <h6 class="text-h6 font-weight-medium">
-                  {{ userData.fullName || userData.username }}
+              <div class="overflow-hidden">
+                <h6 class="text-h6 font-weight-medium text-truncate">
+                  {{ userData.name }}
                 </h6>
-                <VListItemSubtitle class="text-capitalize text-disabled">
-                  {{ userData.role }}
+                <VListItemSubtitle class="text-disabled text-truncate">
+                  {{ userData.role?.label ?? 'مشرف' }}
                 </VListItemSubtitle>
               </div>
             </div>
           </VListItem>
 
-          <PerfectScrollbar :options="{ wheelPropagation: false }">
-            <template
-              v-for="item in userProfileList"
-              :key="item.title"
-            >
-              <VListItem
-                v-if="item.type === 'navItem'"
-                :to="item.to"
-              >
-                <template #prepend>
-                  <VIcon
-                    :icon="item.icon"
-                    size="22"
-                  />
-                </template>
+          <VDivider class="my-2" />
 
-                <VListItemTitle>{{ item.title }}</VListItemTitle>
-
-                <template
-                  v-if="item.badgeProps"
-                  #append
-                >
-                  <VBadge
-                    rounded="sm"
-                    class="me-3"
-                    v-bind="item.badgeProps"
-                  />
-                </template>
-              </VListItem>
-
-              <VDivider
-                v-else
-                class="my-2"
-              />
+          <VListItem>
+            <template #prepend>
+              <VIcon icon="tabler-mail" size="22" />
             </template>
+            <VListItemTitle class="text-body-2" dir="ltr" style="text-align: start;">
+              {{ userData.email }}
+            </VListItemTitle>
+          </VListItem>
 
-            <div class="px-4 py-2">
-              <VBtn
-                block
-                size="small"
-                color="error"
-                append-icon="tabler-logout"
-                @click="logout"
-              >
-                Logout
-              </VBtn>
-            </div>
-          </PerfectScrollbar>
+          <VListItem :to="{ name: 'admin-settings' }">
+            <template #prepend>
+              <VIcon icon="tabler-settings" size="22" />
+            </template>
+            <VListItemTitle>إعدادات النظام</VListItemTitle>
+          </VListItem>
+
+          <VDivider class="my-2" />
+
+          <div class="px-4 py-2">
+            <VBtn
+              block
+              size="small"
+              color="error"
+              append-icon="tabler-logout"
+              :loading="isLoggingOut"
+              @click="logout"
+            >
+              تسجيل الخروج
+            </VBtn>
+          </div>
         </VList>
       </VMenu>
-      <!-- !SECTION -->
     </VAvatar>
   </VBadge>
 </template>
