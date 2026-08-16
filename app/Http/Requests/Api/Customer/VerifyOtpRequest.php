@@ -15,7 +15,7 @@ class VerifyOtpRequest extends FormRequest
     {
         return [
             'phone' => ['required', 'string', 'regex:/^(\+?964|0)?7\d{9}$/'],
-            'code' => ['required', 'string', 'min:4', 'max:8'],
+            'code' => ['required', 'string', 'digits:6'],
         ];
     }
 
@@ -24,6 +24,7 @@ class VerifyOtpRequest extends FormRequest
         return [
             'phone.required' => 'رقم الهاتف مطلوب',
             'phone.regex' => 'رقم الهاتف غير صحيح',
+            'code.digits' => 'الرمز يتكوّن من ٦ أرقام',
             'code.required' => 'رمز التحقق مطلوب',
         ];
     }

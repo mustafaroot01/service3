@@ -64,6 +64,9 @@ enum SettingKey: string
     {
         return match ($this) {
             self::TECHNICIAN_APPLICATION_OPEN => 'عند الإطفاء تختفي الاستمارة من التطبيق ويُرفض أي إرسال',
+            // Dropping the /api gives a 405 page and every code stops silently.
+            self::OTP_BASE_URL => 'https://otp.arqam.tech/api — لا تحذف /api من آخر الرابط',
+            self::OTP_API_KEY => 'من لوحة أرقم. يبدأ بـ otplive_ ويُخزَّن مشفّراً',
             default => null,
         };
     }
