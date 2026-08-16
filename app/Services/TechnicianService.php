@@ -17,6 +17,13 @@ use Throwable;
 
 class TechnicianService extends BaseCrudService
 {
+    /**
+     * Identity papers and residence cards live on a private disk, never the
+     * web-served one — they are only ever shown to an admin, through a
+     * short-lived signed link (see App\Support\Media::secureUrl).
+     */
+    private const DISK = 'local';
+
     protected string $modelClass = Technician::class;
 
     protected array $searchable = ['name', 'phone'];
@@ -66,7 +73,7 @@ class TechnicianService extends BaseCrudService
                 return $technician;
             });
         } catch (Throwable $e) {
-            Storage::disk('public')->delete($written);
+            Storage::disk(self::DISK)->delete($written);
             throw $e;
         }
 
@@ -91,17 +98,27 @@ class TechnicianService extends BaseCrudService
                 $this->writeMedia($model, $uploads, $written, $replaced);
             });
         } catch (Throwable $e) {
-            Storage::disk('public')->delete($written);
+            Storage::disk(self::DISK)->delete($written);
             throw $e;
         }
 
-        Storage::disk('public')->delete($replaced);
+        Storage::disk(self::DISK)->delete($replaced);
 
         return $this->hydrate($model->refresh());
     }
 
     public function delete(Model $model): void
     {
+        // Orders point back at the technician with nullOnDelete, so removing him
+        // would quietly strip his name off every order he ever handled — an
+        // in-progress one included — and erase who did the work. A technician
+        // with any history is disabled through his status, never deleted.
+        if ($model->orders()->exists()) {
+            throw ValidationException::withMessages([
+                'technician' => 'لا يمكن حذف فني لديه طلبات، أوقفه من حالته بدل الحذف',
+            ]);
+        }
+
         $paths = $model->media()->pluck('path')->all();
 
         DB::transaction(function () use ($model) {
@@ -110,7 +127,7 @@ class TechnicianService extends BaseCrudService
             $model->delete();
         });
 
-        Storage::disk('public')->delete($paths);
+        Storage::disk(self::DISK)->delete($paths);
     }
 
     public function deleteMedia(Technician $technician, TechnicianMedia $media): void
@@ -124,7 +141,7 @@ class TechnicianService extends BaseCrudService
         $path = $media->path;
         $media->delete();
 
-        Storage::disk('public')->delete($path);
+        Storage::disk(self::DISK)->delete($path);
     }
 
     public function changeStatus(Technician $technician, TechnicianStatus $status): Technician
@@ -212,7 +229,7 @@ class TechnicianService extends BaseCrudService
             $offset = $existing->max('sort') ?? -1;
 
             foreach (array_slice($files, 0, $room) as $index => $file) {
-                $path = $file->store("technicians/{$technician->id}", 'public');
+                $path = $file->store("technicians/{$technician->id}", self::DISK);
                 $written[] = $path;
 
                 $technician->media()->create([

@@ -38,10 +38,23 @@ it('guards every admin route with a permission except the auth endpoints', funct
     $unguarded = collect(Route::getRoutes())
         ->filter(fn ($route) => str_starts_with($route->uri(), 'api/v1/admin/'))
         ->reject(fn ($route) => str_contains($route->uri(), '/auth/'))
+        // The media endpoint cannot use a permission gate: an <img> tag carries
+        // no bearer token, so a short-lived signature is its credential instead.
+        ->reject(fn ($route) => $route->uri() === 'api/v1/admin/media')
         ->reject(fn ($route) => collect($route->gatherMiddleware())
             ->contains(fn ($m) => is_string($m) && str_starts_with($m, 'permission:')))
         ->map(fn ($route) => $route->uri())
         ->values();
 
     expect($unguarded)->toBeEmpty();
+});
+
+it('locks the media endpoint behind a valid signature', function () {
+    $route = collect(Route::getRoutes())
+        ->first(fn ($r) => $r->uri() === 'api/v1/admin/media');
+
+    expect(collect($route->gatherMiddleware())->contains('signed'))->toBeTrue();
+
+    // Unsigned, it is turned away before it can read anything.
+    $this->getJson('/api/v1/admin/media?path=applications/1/x.png')->assertStatus(403);
 });

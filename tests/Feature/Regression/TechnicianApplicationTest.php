@@ -15,6 +15,7 @@ use App\Services\SettingService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 /**
  * The submission endpoint is public and takes nine images, so the phone gate,
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Storage;
  */
 beforeEach(function () {
     Storage::fake('public');
+    Storage::fake('local');
 
     $this->governorate = Governorate::create(['name' => 'بغداد', 'is_active' => true]);
     $this->district = District::create([
@@ -125,7 +127,7 @@ it('caps the work samples at four', function () {
 it('leaves no file behind when the submission is rejected', function () {
     submit(['full_name' => 'حسين جاسم'])->assertStatus(422);
 
-    expect(Storage::disk('public')->allFiles())->toBeEmpty()
+    expect(Storage::disk('local')->allFiles())->toBeEmpty()
         ->and(TechnicianApplication::count())->toBe(0);
 });
 
@@ -149,7 +151,7 @@ it('turns an accepted application into a pending technician carrying its files',
     submit()->assertCreated();
     $application = TechnicianApplication::sole();
 
-    expect(collect(Storage::disk('public')->allFiles())->filter(fn ($p) => str_starts_with($p, 'applications/')))
+    expect(collect(Storage::disk('local')->allFiles())->filter(fn ($p) => str_starts_with($p, 'applications/')))
         ->toHaveCount(7);
 
     $this->actingAs($this->admin, 'admin')
@@ -166,7 +168,7 @@ it('turns an accepted application into a pending technician carrying its files',
         ->and($technician->specializations()->count())->toBe(1);
 
     // The files moved rather than being copied or re-uploaded.
-    $paths = collect(Storage::disk('public')->allFiles());
+    $paths = collect(Storage::disk('local')->allFiles());
 
     expect($paths->filter(fn ($p) => str_starts_with($p, "technicians/{$technician->id}/")))->toHaveCount(7)
         ->and($paths->filter(fn ($p) => str_starts_with($p, 'applications/')))->toBeEmpty();
@@ -212,22 +214,96 @@ it('keeps the images when the application row is consumed by acceptance', functi
         ->postJson('/api/v1/admin/technician-applications/'.TechnicianApplication::sole()->id.'/accept')->assertOk();
 
     foreach (Technician::sole()->media as $media) {
-        expect(Storage::disk('public')->exists($media->path))->toBeTrue();
+        expect(Storage::disk('local')->exists($media->path))->toBeTrue();
     }
 });
 
-it('frees the phone again once the application is deleted', function () {
+it('frees the phone again once the rejected application is deleted', function () {
     submit()->assertCreated();
+    TechnicianApplication::sole()->forceFill(['status' => ApplicationStatus::REJECTED])->save();
 
     $this->actingAs($this->admin, 'admin')
         ->deleteJson('/api/v1/admin/technician-applications/'.TechnicianApplication::sole()->id)
         ->assertOk();
 
-    expect(Storage::disk('public')->allFiles())->toBeEmpty();
+    expect(Storage::disk('local')->allFiles())->toBeEmpty();
 
     submit()->assertCreated();
 });
 
 it('keeps the submission endpoint closed to nobody', function () {
     $this->getJson('/api/v1/customer/technician-application')->assertOk();
+});
+
+it('lets an admin delete a rejected application and wipes its files off disk', function () {
+    submit()->assertCreated();
+    $application = TechnicianApplication::first();
+    $application->forceFill(['status' => ApplicationStatus::REJECTED])->save();
+
+    expect(Storage::disk('local')->allFiles())->not->toBeEmpty();
+
+    $this->actingAs($this->admin, 'admin')
+        ->deleteJson("/api/v1/admin/technician-applications/{$application->id}")
+        ->assertOk()
+        ->assertJsonPath('message', 'تم حذف الاستمارة ومرفقاتها');
+
+    expect(TechnicianApplication::find($application->id))->toBeNull()
+        ->and(Storage::disk('local')->allFiles())->toBeEmpty();
+});
+
+it('refuses to delete an application that is not rejected', function (string $status) {
+    submit()->assertCreated();
+    $application = TechnicianApplication::first();
+    $application->forceFill(['status' => $status])->save();
+
+    $this->actingAs($this->admin, 'admin')
+        ->deleteJson("/api/v1/admin/technician-applications/{$application->id}")
+        ->assertStatus(422)
+        ->assertJsonPath('errors.status.0', 'لا يمكن حذف إلا الاستمارات المرفوضة');
+
+    expect(TechnicianApplication::find($application->id))->not->toBeNull()
+        ->and(Storage::disk('local')->allFiles())->not->toBeEmpty();
+})->with(['pending', 'under_review']);
+
+/**
+ * Identity papers must never sit on the web-served disk, and the link that
+ * shows them must expire and be unforgeable — an <img> the whole world can
+ * open with a copied URL is exactly what this guards against.
+ */
+it('serves application documents only through a signed link, never a public path', function () {
+    submit()->assertCreated();
+    $application = TechnicianApplication::first();
+
+    // Nothing landed on the public disk; everything is on the private one.
+    expect(Storage::disk('public')->allFiles())->toBeEmpty()
+        ->and(Storage::disk('local')->allFiles())->not->toBeEmpty();
+
+    $documents = $this->actingAs($this->admin, 'admin')
+        ->getJson("/api/v1/admin/technician-applications/{$application->id}")
+        ->assertOk()
+        ->json('data.documents');
+
+    $url = $documents['id_front']['url'];
+
+    expect($url)->toContain('/admin/media')
+        ->and($url)->toContain('signature=')
+        ->and($url)->not->toContain('/storage/');
+});
+
+it('rejects an unsigned or tampered media link', function () {
+    submit()->assertCreated();
+    $path = TechnicianApplication::first()->media()->first()->path;
+
+    // No signature at all.
+    $this->getJson('/api/v1/admin/media?path='.urlencode($path))->assertStatus(403);
+
+    // A valid signature for one path cannot be pointed at another.
+    $signed = URL::temporarySignedRoute('admin.media', now()->addMinutes(30), ['path' => $path]);
+    $swapped = str_replace(urlencode($path), urlencode('applications/999/forged.png'), $signed);
+    $this->get($swapped)->assertStatus(403);
+});
+
+it('refuses to serve a file outside the document trees even when signed', function () {
+    $signed = URL::temporarySignedRoute('admin.media', now()->addMinutes(30), ['path' => '../../.env']);
+    $this->get($signed)->assertStatus(404);
 });

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Enums\ApplicationStatus;
 use App\Http\Requests\Api\Admin\UpdateApplicationStatusRequest;
 use App\Http\Resources\Api\Admin\TechnicianApplicationResource;
 use App\Http\Resources\Api\Admin\TechnicianResource;
@@ -52,6 +53,26 @@ class TechnicianApplicationController extends AdminCrudController
             ['technician' => new TechnicianResource($technician)],
             "تم قبول {$technician->name} ونقله إلى الفنيين — فعّله من ملفه ليبدأ استلام الطلبات"
         );
+    }
+
+    public function destroy(string $id): JsonResponse
+    {
+        $application = TechnicianApplication::findOrFail((int) $id);
+
+        // Only a rejected form is finished business. A pending or under-review
+        // one is a real applicant still waiting on an answer, and deleting it
+        // silently drops him along with his uploaded documents.
+        if ($application->status !== ApplicationStatus::REJECTED) {
+            return ApiResponse::error(
+                'لا يمكن حذف إلا الاستمارات المرفوضة',
+                ['status' => ['لا يمكن حذف إلا الاستمارات المرفوضة']],
+                422
+            );
+        }
+
+        $this->applications->delete($application);
+
+        return ApiResponse::success(null, 'تم حذف الاستمارة ومرفقاتها');
     }
 
     public function pendingCount(): JsonResponse

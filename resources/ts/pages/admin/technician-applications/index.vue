@@ -57,15 +57,25 @@ const statusColor = (status: string) => ({
   pending: 'warning', under_review: 'info', rejected: 'error',
 }[status] ?? 'secondary')
 
+const { busyRow, run } = useRowAction(() => table.refresh())
+const confirmDelete = ref<Application | null>(null)
+
+const remove = async () => {
+  const row = confirmDelete.value
+  if (!row) return
+  confirmDelete.value = null
+  await run(row.id, () => $api(`/admin/technician-applications/${row.id}`, { method: 'DELETE' }))
+}
 </script>
 
 <template>
-  <AppDataTableServer
-    title="استمارات انضمام الفنيين"
-    :headers="headers"
-    :table="table"
-    search-placeholder="بحث بالاسم أو الهاتف"
-  >
+  <div>
+    <AppDataTableServer
+      title="استمارات انضمام الفنيين"
+      :headers="headers"
+      :table="table"
+      search-placeholder="بحث بالاسم أو الهاتف"
+    >
     <template #item.full_name="{ item }">
       <RouterLink
         :to="{ name: 'admin-technician-applications-id', params: { id: item.id } }"
@@ -108,16 +118,46 @@ const statusColor = (status: string) => ({
     </template>
 
     <template #item.actions="{ item }">
-      <VBtn
-        icon
-        variant="text"
-        size="small"
-        color="default"
-        :to="{ name: 'admin-technician-applications-id', params: { id: item.id } }"
-      >
-        <VIcon icon="tabler-eye" />
-        <VTooltip activator="parent" location="top">عرض الاستمارة</VTooltip>
-      </VBtn>
+      <div class="d-flex justify-center">
+        <VBtn
+          icon
+          variant="text"
+          size="small"
+          color="default"
+          :to="{ name: 'admin-technician-applications-id', params: { id: item.id } }"
+        >
+          <VIcon icon="tabler-eye" />
+          <VTooltip activator="parent" location="top">عرض الاستمارة</VTooltip>
+        </VBtn>
+
+        <VBtn
+          v-if="item.status === 'rejected'"
+          icon
+          variant="text"
+          size="small"
+          color="error"
+          :loading="busyRow === item.id"
+          @click="confirmDelete = item"
+        >
+          <VIcon icon="tabler-trash" />
+          <VTooltip activator="parent" location="top">حذف الاستمارة ومرفقاتها</VTooltip>
+        </VBtn>
+      </div>
     </template>
-  </AppDataTableServer>
+
+    </AppDataTableServer>
+
+    <VDialog :model-value="confirmDelete !== null" max-width="440" @update:model-value="confirmDelete = null">
+      <VCard title="حذف استمارة مرفوضة">
+        <VCardText>
+          سيتم حذف استمارة «{{ confirmDelete?.full_name }}» نهائياً مع كل مرفقاتها من هوية وبطاقة سكن ونماذج أعمال. لا يمكن التراجع.
+        </VCardText>
+        <VCardActions class="px-6 pb-4">
+          <VSpacer />
+          <VBtn color="secondary" variant="tonal" @click="confirmDelete = null">إلغاء</VBtn>
+          <VBtn color="error" @click="remove">حذف</VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+  </div>
 </template>

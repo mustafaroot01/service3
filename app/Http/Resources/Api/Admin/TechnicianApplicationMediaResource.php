@@ -14,7 +14,7 @@ class TechnicianApplicationMediaResource extends JsonResource
             'id' => $this->id,
             'type' => $this->type->value,
             'type_label' => $this->type->label(),
-            'url' => Media::url($this->path),
+            'url' => Media::secureUrl($this->path),
             'sort' => $this->sort,
         ];
     }

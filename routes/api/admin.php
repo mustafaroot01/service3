@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\DistrictController;
 use App\Http\Controllers\Api\Admin\GovernorateController;
 use App\Http\Controllers\Api\Admin\LegalPageController;
+use App\Http\Controllers\Api\Admin\MediaController;
 use App\Http\Controllers\Api\Admin\OrderController;
 use App\Http\Controllers\Api\Admin\PermissionController;
 use App\Http\Controllers\Api\Admin\RoleController;
@@ -45,6 +46,11 @@ Route::prefix('admin')->name('admin.')->group(function () use ($crud) {
     Route::post('auth/login', [AuthController::class, 'login'])
         ->middleware('throttle:admin-login')
         ->name('auth.login');
+
+    // Outside auth:admin on purpose: an <img> tag cannot send the bearer token,
+    // so the short-lived signature is the credential here.
+    Route::get('media', [MediaController::class, 'show'])
+        ->middleware('signed')->name('media');
 
     Route::middleware('auth:admin')->group(function () use ($crud) {
 

@@ -21,6 +21,13 @@ use Throwable;
 
 class TechnicianApplicationService extends BaseCrudService
 {
+    /**
+     * Applicants upload identity and residence cards. They stay on a private
+     * disk the web server never exposes, reached only through a short-lived
+     * signed link (App\Support\Media::secureUrl).
+     */
+    private const DISK = 'local';
+
     protected string $modelClass = TechnicianApplication::class;
 
     protected array $searchable = ['full_name', 'phone'];
@@ -109,7 +116,7 @@ class TechnicianApplicationService extends BaseCrudService
                 return $application;
             });
         } catch (Throwable $e) {
-            Storage::disk('public')->delete($written);
+            Storage::disk(self::DISK)->delete($written);
             throw $e;
         }
 
@@ -156,7 +163,7 @@ class TechnicianApplicationService extends BaseCrudService
             $model->delete();
         });
 
-        Storage::disk('public')->delete($paths);
+        Storage::disk(self::DISK)->delete($paths);
     }
 
     /**
@@ -192,7 +199,7 @@ class TechnicianApplicationService extends BaseCrudService
                 foreach ($application->media as $media) {
                     $target = "technicians/{$technician->id}/".basename($media->path);
 
-                    Storage::disk('public')->move($media->path, $target);
+                    Storage::disk(self::DISK)->move($media->path, $target);
                     $moved[] = ['from' => $media->path, 'to' => $target];
 
                     $technician->media()->create([
@@ -211,7 +218,7 @@ class TechnicianApplicationService extends BaseCrudService
             // The files were moved outside the database's reach, so a rollback
             // has to put them back by hand or the application loses its images.
             foreach ($moved as $move) {
-                Storage::disk('public')->move($move['to'], $move['from']);
+                Storage::disk(self::DISK)->move($move['to'], $move['from']);
             }
 
             throw $e;
@@ -232,7 +239,7 @@ class TechnicianApplicationService extends BaseCrudService
                 continue;
             }
 
-            $path = $file->store("applications/{$application->id}", 'public');
+            $path = $file->store("applications/{$application->id}", self::DISK);
             $written[] = $path;
 
             $application->media()->create(['type' => $type, 'path' => $path, 'sort' => 0]);
@@ -244,7 +251,7 @@ class TechnicianApplicationService extends BaseCrudService
         ));
 
         foreach (array_slice($samples, 0, MediaType::WORK_SAMPLE_LIMIT) as $index => $file) {
-            $path = $file->store("applications/{$application->id}", 'public');
+            $path = $file->store("applications/{$application->id}", self::DISK);
             $written[] = $path;
 
             $application->media()->create([
