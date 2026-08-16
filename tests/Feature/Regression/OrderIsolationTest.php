@@ -73,3 +73,13 @@ it('never leaks the acting staff identity in the customer timeline', function ()
         ->assertJsonMissingPath('data.timeline.0.actor_name')
         ->assertJsonMissingPath('data.timeline.0.actor_id');
 });
+
+it('always sends technician as a key, null when none is assigned', function () {
+    $response = $this->actingAs($this->victim, 'user')
+        ->getJson("/api/v1/customer/orders/{$this->order->id}")
+        ->assertOk();
+
+    // The key is present and explicitly null — never dropped from the payload.
+    expect($response->json('data'))->toHaveKey('technician')
+        ->and($response->json('data.technician'))->toBeNull();
+});

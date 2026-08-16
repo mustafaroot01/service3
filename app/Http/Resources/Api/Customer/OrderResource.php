@@ -29,10 +29,12 @@ class OrderResource extends JsonResource
             'service' => new ServiceResource($this->whenLoaded('service')),
             'governorate' => new GovernorateResource($this->whenLoaded('governorate')),
             'district' => new DistrictResource($this->whenLoaded('district')),
-            'technician' => $this->when(
-                $this->relationLoaded('technician') && $this->technician !== null,
-                fn () => (new OrderTechnicianResource($this->technician))->resolve()
-            ),
+            // Always present as a key: when() drops it entirely for an
+            // unassigned order, but the app reads order.technician and the
+            // contract promises null, not a missing field.
+            'technician' => $this->technician
+                ? (new OrderTechnicianResource($this->technician))->resolve()
+                : null,
             'images' => OrderImageResource::collection($this->whenLoaded('images')),
             'timeline' => OrderTimelineResource::collection($this->whenLoaded('statusHistories')),
             'created_at' => $this->created_at?->toIso8601String(),
