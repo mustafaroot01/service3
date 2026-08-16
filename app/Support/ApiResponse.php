@@ -65,7 +65,7 @@ class ApiResponse
         return self::error($message, [], 403);
     }
 
-    public static function validationError(array $errors, string $message = 'Validation failed'): JsonResponse
+    public static function validationError(array $errors, string $message = 'البيانات المدخلة غير صحيحة'): JsonResponse
     {
         return self::error($message, $errors, 422);
     }
