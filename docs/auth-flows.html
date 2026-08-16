@@ -411,6 +411,7 @@ a{color:var(--l-login)}
           <tr><td><span class="st bad">422</span></td><td><code>otp[0] = EXPIRED_CODE</code></td><td>«انتهت الصلاحية» + فعّل زر إعادة الإرسال</td><td><span class="dest stay">ابقَ</span></td></tr>
           <tr><td><span class="st bad">422</span></td><td><code>phone[0]</code> = هذا الرقم موثّق بالفعل، سجّل الدخول</td><td>الرسالة كإشعار</td><td><span class="dest">شاشة الدخول</span></td></tr>
           <tr><td><span class="st bad">422</span></td><td><code>phone[0]</code> = لا يوجد حساب بهذا الرقم</td><td>أعِده لشاشة إنشاء الحساب</td><td><span class="dest">إنشاء حساب</span></td></tr>
+          <tr><td><span class="st bad">422</span></td><td><code>phone[0]</code> = حسابك غير مفعّل / مجدول للحذف</td><td>أوقفته الإدارة — اعرض الرسالة ولا تعد الإرسال</td><td><span class="dest">شاشة الدخول</span></td></tr>
           <tr><td><span class="st warn">429</span></td><td>—</td><td>حاولت مرات كثيرة، انتظر عشر دقائق</td><td><span class="dest stay">ابقَ</span></td></tr>
         </tbody>
       </table></div>
@@ -855,6 +856,7 @@ a{color:var(--l-login)}
     <thead><tr><th><code>status</code></th><th><code>status_label</code></th><th>الدخول</th><th>الرسالة</th></tr></thead>
     <tbody>
       <tr><td><code>pending</code></td><td>بانتظار التوثيق</td><td><span class="st bad">مرفوض</span></td><td>لم يتم توثيق رقمك بعد، اطلب رمز التحقق</td></tr>
+      <tr><td colspan="4" style="color:var(--ink-3);font-size:.86rem">الرمز يُوثّق الرقم فقط. حساب أوقفته الإدارة قبل أن يكمل التوثيق يبقى موقوفاً بعده، ولا يُرسل له رمز أصلاً.</td></tr>
       <tr><td><code>active</code></td><td>نشط</td><td><span class="st ok">مسموح</span></td><td>—</td></tr>
       <tr><td><code>inactive</code></td><td>غير نشط</td><td><span class="st bad">مرفوض</span></td><td>حسابك غير مفعّل، راجع الإدارة</td></tr>
       <tr><td><code>suspended</code></td><td>موقوف</td><td><span class="st bad">مرفوض</span></td><td>حسابك غير مفعّل، راجع الإدارة</td></tr>

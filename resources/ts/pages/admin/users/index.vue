@@ -83,7 +83,7 @@ const genderLabel = (value: string | null) =>
   value === 'female' ? 'أنثى' : value === 'male' ? 'ذكر' : '—'
 
 const statusColor = (status: string) => ({
-  active: 'success', inactive: 'secondary', suspended: 'error',
+  pending: 'warning', active: 'success', inactive: 'secondary', suspended: 'error',
   scheduled_for_deletion: 'error',
 }[status] ?? 'secondary')
 </script>

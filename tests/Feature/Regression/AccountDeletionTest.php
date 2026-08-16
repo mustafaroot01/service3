@@ -268,3 +268,53 @@ it('does not throttle repeated logins', function () {
         ])->assertOk();
     }
 });
+
+/**
+ * The code proves a phone number, and nothing about it should overrule an
+ * admin who closed the account while the customer was still finishing signup.
+ */
+it('verifies the phone without reopening an account the admin closed', function () {
+    $held = User::factory()->create(['phone' => '9647755566677']);
+    $held->forceFill(['status' => UserStatus::SUSPENDED, 'phone_verified_at' => null])->save();
+
+    \App\Models\PhoneVerification::create([
+        'phone' => '9647755566677',
+        'message_id' => 'fake',
+        'purpose' => \App\Enums\OtpPurpose::REGISTER,
+        'expires_at' => now()->addMinutes(10),
+    ]);
+
+    $this->postJson('/api/v1/customer/auth/verify-otp', [
+        'phone' => '07755566677', 'code' => OtpService::FAKE_CODE,
+    ])->assertOk();
+
+    $held->refresh();
+
+    expect($held->phone_verified_at)->not->toBeNull()
+        ->and($held->status)->toBe(UserStatus::SUSPENDED);
+
+    app('auth')->forgetGuards();
+
+    $this->postJson('/api/v1/customer/auth/login', [
+        'phone' => '07755566677', 'password' => 'password',
+    ])->assertStatus(422)->assertJsonPath('errors.phone.0', 'حسابك غير مفعّل، راجع الإدارة');
+});
+
+it('refuses to spend a message on an account that could not log in with it', function () {
+    $closed = User::factory()->verified()->create(['phone' => '9647755566688']);
+
+    foreach ([
+        [UserStatus::SCHEDULED_FOR_DELETION, 'حسابك مجدول للحذف'],
+        [UserStatus::SUSPENDED, 'حسابك غير مفعّل، راجع الإدارة'],
+    ] as [$status, $message]) {
+        $closed->forceFill(['status' => $status])->save();
+
+        foreach (['resend-otp', 'forgot-password'] as $endpoint) {
+            app('auth')->forgetGuards();
+
+            $this->postJson("/api/v1/customer/auth/{$endpoint}", ['phone' => '07755566688'])
+                ->assertStatus(422)
+                ->assertJsonPath('errors.phone.0', $message);
+        }
+    }
+});

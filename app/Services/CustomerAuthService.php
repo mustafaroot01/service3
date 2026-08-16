@@ -79,9 +79,15 @@ class CustomerAuthService
 
         $this->otp->verify($phone, OtpPurpose::REGISTER, $code);
 
+        /**
+         * The code proves the phone, nothing more. Raising the status is only
+         * right for an account still waiting on it — an admin who suspended
+         * this one meanwhile must not have his decision undone by a customer
+         * finishing the signup he started.
+         */
         $user->forceFill([
-            'status' => UserStatus::ACTIVE,
             'phone_verified_at' => now(),
+            'status' => $user->status === UserStatus::PENDING ? UserStatus::ACTIVE : $user->status,
         ])->save();
 
         return ['phone' => $user->phone];
@@ -102,6 +108,8 @@ class CustomerAuthService
             ? OtpPurpose::REGISTER
             : OtpPurpose::RESET;
 
+        $this->guardCodeIsWorthSending($user);
+
         $this->otp->send($phone, $purpose);
 
         return [
@@ -116,6 +124,24 @@ class CustomerAuthService
         return User::where('phone', $phone)->firstOr(fn () => throw ValidationException::withMessages([
             'phone' => 'لا يوجد حساب بهذا الرقم',
         ]));
+    }
+
+    /**
+     * Every code costs a WhatsApp message. An account that cannot log in once
+     * it holds the code has no use for one, so it is refused before the
+     * provider is called and told why instead.
+     */
+    private function guardCodeIsWorthSending(User $user): void
+    {
+        $message = match (true) {
+            $user->status === UserStatus::SCHEDULED_FOR_DELETION => 'حسابك مجدول للحذف',
+            $user->status !== UserStatus::ACTIVE && $user->phone_verified_at !== null => 'حسابك غير مفعّل، راجع الإدارة',
+            default => null,
+        };
+
+        if ($message !== null) {
+            throw ValidationException::withMessages(['phone' => $message]);
+        }
     }
 
     /**
@@ -174,13 +200,17 @@ class CustomerAuthService
     {
         $phone = Phone::international($phone);
 
+        $user = $this->requireAccountFor($phone);
+
         // Recovering a password one never got to use makes no sense, and the
         // signup code is the right one to finish that account.
-        if ($this->requireAccountFor($phone)->phone_verified_at === null) {
+        if ($user->phone_verified_at === null) {
             throw ValidationException::withMessages([
                 'phone' => 'لم يتم توثيق رقمك بعد، اطلب رمز التحقق',
             ]);
         }
+
+        $this->guardCodeIsWorthSending($user);
 
         $this->otp->send($phone, OtpPurpose::RESET);
 
