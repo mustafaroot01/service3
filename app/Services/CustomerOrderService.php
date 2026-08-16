@@ -7,6 +7,7 @@ use App\Enums\OrderStatus;
 use App\Events\OrderStatusChanged;
 use App\Models\Order;
 use App\Models\User;
+use App\Support\Pagination;
 use App\Support\VisitWindow;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -96,7 +97,7 @@ class CustomerOrderService
             ->with(self::LIST_RELATIONS)
             ->when($request->filled('status'), fn (Builder $q) => $q->where('status', $request->input('status')))
             ->latest('id')
-            ->paginate((int) $request->input('per_page', 15))
+            ->paginate(Pagination::perPage($request, 15))
             ->appends($request->query());
     }
 

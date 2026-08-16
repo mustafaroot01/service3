@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Pagination;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -32,10 +33,9 @@ abstract class BaseCrudService extends BaseService
 
     protected function applyFilters(Builder $query, Request $request): void {}
 
-    /** A caller-supplied page size is untrusted input; an unbounded one loads the whole table. */
     protected function perPage(Request $request): int
     {
-        return max(1, min(100, (int) $request->input('per_page', 15)));
+        return Pagination::perPage($request);
     }
 
     public function list(Request $request): LengthAwarePaginator

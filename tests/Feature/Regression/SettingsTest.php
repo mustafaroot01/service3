@@ -76,14 +76,17 @@ it('reports an undecryptable value as unset instead of throwing', function () {
     expect(app(SettingService::class)->get(SettingKey::OTP_API_KEY))->toBeNull();
 });
 
-it('answers the customer with a handled error rather than a server crash', function () {
+it('treats an unconfigured messaging service as a 503 outage, not a field error', function () {
     config(['services.otp.fake' => false]);
     Setting::query()->delete();
     User::factory()->verified()->create(['phone' => '9647801111111']);
 
+    // Provider-side fault: a 503 the app shows as "try later", and with no
+    // errors.otp so it never reddens the phone field as if the customer erred.
     $this->postJson('/api/v1/customer/auth/forgot-password', ['phone' => '07801111111'])
-        ->assertStatus(422)
-        ->assertJsonPath('errors.otp.0', 'NOT_CONFIGURED');
+        ->assertStatus(503)
+        ->assertJsonPath('message', 'خدمة الرسائل غير مهيّأة، راجع الإدارة')
+        ->assertJsonPath('errors', []);
 });
 
 it('reads every setting in a single query', function () {
@@ -102,4 +105,19 @@ it('reads every setting in a single query', function () {
     $service->get(SettingKey::ONESIGNAL_REST_API_KEY);
 
     expect($queries)->toBe(1);
+});
+
+it('keeps a customer OTP mistake as a 422 with a field error', function () {
+    config(['services.otp.fake' => true]);
+    $customer = User::factory()->verified()->create(['phone' => '9647802222222']);
+
+    app(App\Services\OtpService::class)->send('07802222222', App\Enums\OtpPurpose::RESET);
+
+    // Wrong code is the caller's fault: 422, and errors.otp so the field flags it.
+    $this->postJson('/api/v1/customer/auth/reset-password', [
+        'phone' => '07802222222', 'code' => '000000',
+        'password' => 'new-pass-123', 'password_confirmation' => 'new-pass-123',
+    ])
+        ->assertStatus(422)
+        ->assertJsonPath('errors.otp.0', 'INVALID_CODE');
 });

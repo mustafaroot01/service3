@@ -14,14 +14,23 @@ class OtpException extends RuntimeException
         'COOLDOWN' => 'انتظر قليلاً قبل إعادة إرسال الرمز',
         'TOO_MANY_REQUESTS' => 'حاولت كثيراً، انتظر قليلاً ثم أعد المحاولة',
         'INVALID_OTP_FORMAT' => 'الرمز يتكوّن من ٦ أرقام',
-        // Arqam counts per address, and one blocked address takes every
-        // customer on the server down with it.
-        'RATE_LIMIT_IP' => 'خدمة الرسائل مزدحمة حالياً، حاول بعد قليل',
         'MISSING_API_KEY' => 'خدمة الرسائل غير مهيّأة، راجع الإدارة',
         'INVALID_API_KEY' => 'خدمة الرسائل غير مهيّأة بشكل صحيح، راجع الإدارة',
         'INSUFFICIENT_CREDITS' => 'رصيد الرسائل غير كافٍ، راجع الإدارة',
         'NOT_CONFIGURED' => 'خدمة الرسائل غير مهيّأة، راجع الإدارة',
         'SERVICE_UNAVAILABLE' => 'خدمة الرسائل غير متاحة حالياً، حاول لاحقاً',
+    ];
+
+    /**
+     * Faults on the messaging service's side, not the caller's: an unconfigured
+     * key, a drained balance, the host unreachable. These are a 503 the app
+     * shows as "try later" and monitoring counts as an outage — never a 422
+     * that reddens the code field. Anything the provider reports that we do not
+     * map (its own address throttling included) collapses to SERVICE_UNAVAILABLE.
+     */
+    private const SERVICE_REASONS = [
+        'NOT_CONFIGURED', 'MISSING_API_KEY', 'INVALID_API_KEY',
+        'INSUFFICIENT_CREDITS', 'SERVICE_UNAVAILABLE', 'TOO_MANY_REQUESTS',
     ];
 
     public readonly string $reason;
@@ -31,6 +40,16 @@ class OtpException extends RuntimeException
         $this->reason = $reason;
 
         parent::__construct($message ?? self::MESSAGES[$reason] ?? self::MESSAGES['SERVICE_UNAVAILABLE']);
+    }
+
+    public function isServiceFault(): bool
+    {
+        return \in_array($this->reason, self::SERVICE_REASONS, true);
+    }
+
+    public function status(): int
+    {
+        return $this->isServiceFault() ? 503 : 422;
     }
 
     /**

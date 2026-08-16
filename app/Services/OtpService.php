@@ -7,6 +7,7 @@ use App\Enums\SettingKey;
 use App\Exceptions\OtpException;
 use App\Models\PhoneVerification;
 use App\Support\Phone;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -105,7 +106,7 @@ class OtpService
 
     private function providerSend(string $phone, OtpPurpose $purpose): ?string
     {
-        $response = $this->client()->post($purpose->endpoint(), [
+        $response = $this->post($purpose->endpoint(), [
             'phoneNumber' => $phone,
         ]);
 
@@ -125,7 +126,7 @@ class OtpService
 
     private function providerVerify(?string $messageId, string $code): void
     {
-        $response = $this->client()->post('/sms/verify', [
+        $response = $this->post('/sms/verify', [
             'messageId' => $messageId,
             'code' => $code,
         ]);
@@ -156,6 +157,23 @@ class OtpService
         return $response->json('success') !== false;
     }
 
+    /**
+     * A DNS miss, a refused connection or a timeout throws ConnectionException,
+     * which would otherwise escape as a raw 500. Arqam being unreachable is
+     * exactly what SERVICE_UNAVAILABLE means, so it is turned into that — the
+     * customer reads "الخدمة غير متاحة حالياً" and monitoring sees a 503.
+     */
+    private function post(string $uri, array $body): Response
+    {
+        try {
+            return $this->client()->post($uri, $body);
+        } catch (ConnectionException $e) {
+            Log::warning('OTP provider unreachable', ['uri' => $uri, 'message' => $e->getMessage()]);
+
+            throw new OtpException('SERVICE_UNAVAILABLE');
+        }
+    }
+
     private function client(): PendingRequest
     {
         $baseUrl = $this->settings->get(SettingKey::OTP_BASE_URL);
@@ -165,11 +183,13 @@ class OtpService
             throw new OtpException('NOT_CONFIGURED');
         }
 
+        // Short on purpose: a stalled provider must not pin a php-fpm worker for
+        // half a minute per attempt while the service is down.
         return Http::baseUrl(rtrim($baseUrl, '/'))
             ->withToken($apiKey)
             ->acceptJson()
-            ->timeout(20)
-            ->connectTimeout(10);
+            ->timeout(8)
+            ->connectTimeout(5);
     }
 
     private function fakeSend(string $phone, OtpPurpose $purpose): string

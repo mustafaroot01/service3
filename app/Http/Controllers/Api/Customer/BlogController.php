@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\Customer\BlogPostResource;
 use App\Models\BlogPost;
 use App\Support\ApiResponse;
+use App\Support\Pagination;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,7 +16,7 @@ class BlogController extends Controller
     {
         $posts = BlogPost::visible()
             ->orderByDesc('published_at')
-            ->paginate((int) $request->input('per_page', 10))
+            ->paginate(Pagination::perPage($request, 10))
             ->appends($request->query());
 
         return ApiResponse::paginated($posts, BlogPostResource::class, 'Blog posts retrieved successfully');

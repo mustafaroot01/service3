@@ -5,6 +5,7 @@ use App\Support\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -38,8 +39,23 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return match (true) {
-                $e instanceof OtpException => ApiResponse::error($e->getMessage(), ['otp' => [$e->reason]], 422),
+                // A service fault carries no field error — the app must show it
+                // as an outage, not redden the code box — while a customer fault
+                // keeps errors.otp so the OTP field can flag it.
+                $e instanceof OtpException => $e->isServiceFault()
+                    ? ApiResponse::error($e->getMessage(), [], $e->status())
+                    : ApiResponse::error($e->getMessage(), ['otp' => [$e->reason]], $e->status()),
                 $e instanceof ValidationException => ApiResponse::validationError($e->errors()),
+                // The unique index is the real gatekeeper; the pre-checks in the
+                // services are only there for a nicer message. When two requests
+                // race past those checks — a double-tapped signup, two admins
+                // accepting one application — the second trips the index. That is
+                // a conflict the caller can act on, not a server fault to log.
+                $e instanceof UniqueConstraintViolationException => ApiResponse::error(
+                    'هذه العملية نُفّذت مسبقاً، لا داعي لتكرارها',
+                    [],
+                    409
+                ),
                 $e instanceof AuthenticationException => ApiResponse::unauthorized(),
                 $e instanceof AuthorizationException => ApiResponse::forbidden(),
                 $e instanceof ModelNotFoundException,

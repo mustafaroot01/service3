@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\Customer\NotificationResource;
 use App\Models\Notification;
 use App\Support\ApiResponse;
+use App\Support\Pagination;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ class NotificationController extends Controller
         $notifications = $this->scoped($request)
             ->when($request->boolean('unread'), fn (Builder $q) => $q->whereNull('read_at'))
             ->latest('id')
-            ->paginate((int) $request->input('per_page', 20))
+            ->paginate(Pagination::perPage($request, 20))
             ->appends($request->query());
 
         return ApiResponse::paginated($notifications, NotificationResource::class, 'Notifications retrieved successfully');

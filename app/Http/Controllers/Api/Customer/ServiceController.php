@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\Customer\ServiceResource;
 use App\Models\Service;
 use App\Support\ApiResponse;
+use App\Support\Pagination;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class ServiceController extends Controller
             })
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->paginate((int) $request->input('per_page', 20))
+            ->paginate(Pagination::perPage($request, 20))
             ->appends($request->query());
 
         return ApiResponse::paginated($services, ServiceResource::class, 'Services retrieved successfully');
