@@ -54,6 +54,7 @@ Authorization: Bearer <token>
 | `401` | غير مصرّح — توكن مفقود أو منتهٍ | امسح التوكن وارجع لشاشة الدخول |
 | `403` | ممنوع | اعرض `message` |
 | `404` | غير موجود | اعرض `message` |
+| `409` | تعارض — العملية نُفّذت مسبقاً (نقرة مزدوجة) | اعرض `message`، لا تُعد الإرسال |
 | `422` | خطأ تحقق | اعرض `errors` تحت كل حقل |
 | `429` | محاولات كثيرة | اعرض «حاول بعد قليل» |
 | `500` | خطأ سيرفر | اعرض رسالة عامة |
@@ -1065,25 +1066,54 @@ POST /auth/login       →  200 + التوكن                      ←  الم�
 {
   "success": true,
   "message": "Notifications retrieved successfully",
-  "data": [],
-  "meta": {
-    "current_page": 1,
-    "per_page": 20,
-    "total": 0,
-    "last_page": 1
-  }
+  "data": [
+    {
+      "id": 36,
+      "title": "تم تعيين فني لطلبك",
+      "body": "الفني حيدر كاظم سيتولى طلبك رقم HS-260816-0007",
+      "type": "order_status",
+      "is_read": false,
+      "read_at": null,
+      "order_id": 41,
+      "order_number": "HS-260816-0007",
+      "status": "assigned",
+      "blog_post_id": null,
+      "data": {
+        "order_id": 41,
+        "order_number": "HS-260816-0007",
+        "from_status": "confirmed",
+        "to_status": "assigned"
+      },
+      "created_at": "2026-08-16T12:10:30+03:00"
+    },
+    {
+      "id": 37,
+      "title": "مقال جديد",
+      "body": "خمس علامات تدل على تسريب في أنابيب المطبخ",
+      "type": "blog_post",
+      "is_read": false,
+      "read_at": null,
+      "order_id": null,
+      "order_number": null,
+      "status": null,
+      "blog_post_id": 7,
+      "data": { "blog_post_id": 7, "title": "خمس علامات تدل على تسريب في أنابيب المطبخ" },
+      "created_at": "2026-08-16T12:10:30+03:00"
+    }
+  ],
+  "meta": { "current_page": 1, "per_page": 20, "total": 2, "last_page": 1 }
 }
 ```
 
 **الأنواع:**
 
-| `type` | متى يصل |
-|---|---|
-| `order_status` | تغيّرت حالة طلبك |
-| `technician_reassigned` | تبدّل الفني المكلّف بطلبك |
-| `blog_post` | نُشر مقال جديد بالمدوّنة |
+| `type` | متى يصل | المفتاح الذي يفتح الشاشة |
+|---|---|---|
+| `order_status` | تغيّرت حالة طلبك | `order_id` |
+| `technician_reassigned` | تبدّل الفني المكلّف بطلبك | `order_id` |
+| `blog_post` | نُشر مقال جديد بالمدوّنة | `blog_post_id` |
 
-`data` تحمل `order_id` أو `blog_post_id` — استعملها لفتح الشاشة الصحيحة عند الضغط.
+استعمل `order_id` أو `blog_post_id` لفتح الشاشة الصحيحة عند الضغط. الحقل `data` يحمل الحمولة الكاملة كما وصلت في الإشعار الفوري (OneSignal)، فتقدر تعتمد معالِجاً واحداً للاثنين.
 
 ### `GET /customer/notifications/unread-count`
 للنقطة الحمراء على أيقونة الجرس.
