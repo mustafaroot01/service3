@@ -6,6 +6,7 @@ use App\Models\District;
 use App\Models\Governorate;
 use App\Models\User;
 use App\Services\OtpService;
+use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * The request records a wish and ends the session — it must never remove the
@@ -259,13 +260,61 @@ it('sends the customer back to the login screen after a password reset', functio
     ])->assertOk();
 });
 
-it('does not throttle repeated logins', function () {
+it('never locks a customer out for logging in correctly, however often', function () {
     foreach (range(1, 25) as $ignored) {
         app('auth')->forgetGuards();
 
         $this->postJson('/api/v1/customer/auth/login', [
             'phone' => $this->customer->phone, 'password' => 'password',
         ])->assertOk();
+    }
+});
+
+it('locks the account after five wrong passwords, then a right one is still refused', function () {
+    RateLimiter::clear('customer-login:'.$this->customer->phone);
+
+    foreach (range(1, 5) as $ignored) {
+        app('auth')->forgetGuards();
+
+        $this->postJson('/api/v1/customer/auth/login', [
+            'phone' => $this->customer->phone, 'password' => 'wrong-one',
+        ])->assertStatus(422)->assertJsonPath('errors.phone.0', 'رقم الهاتف أو كلمة السر غير صحيحة');
+    }
+
+    app('auth')->forgetGuards();
+
+    // The sixth try is turned away before the password is even checked, so
+    // even the correct one cannot get through until the window passes.
+    $this->postJson('/api/v1/customer/auth/login', [
+        'phone' => $this->customer->phone, 'password' => 'password',
+    ])->assertStatus(422)->assertJsonPath('errors.phone.0', fn ($m) => str_starts_with($m, 'محاولات دخول كثيرة'));
+});
+
+it('forgets the wrong attempts the moment the customer signs in correctly', function () {
+    RateLimiter::clear('customer-login:'.$this->customer->phone);
+
+    foreach (range(1, 4) as $ignored) {
+        app('auth')->forgetGuards();
+
+        $this->postJson('/api/v1/customer/auth/login', [
+            'phone' => $this->customer->phone, 'password' => 'wrong-one',
+        ])->assertStatus(422);
+    }
+
+    app('auth')->forgetGuards();
+
+    $this->postJson('/api/v1/customer/auth/login', [
+        'phone' => $this->customer->phone, 'password' => 'password',
+    ])->assertOk();
+
+    // Four wrong then one right cleared the count; four more wrong must not trip
+    // the limit, proving the tally reset rather than merely paused.
+    foreach (range(1, 4) as $ignored) {
+        app('auth')->forgetGuards();
+
+        $this->postJson('/api/v1/customer/auth/login', [
+            'phone' => $this->customer->phone, 'password' => 'wrong-one',
+        ])->assertStatus(422)->assertJsonPath('errors.phone.0', 'رقم الهاتف أو كلمة السر غير صحيحة');
     }
 });
 

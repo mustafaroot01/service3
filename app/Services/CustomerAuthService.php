@@ -8,11 +8,16 @@ use App\Models\User;
 use App\Support\Phone;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 class CustomerAuthService
 {
     private const TOKEN_NAME = 'customer';
+
+    private const LOGIN_MAX_ATTEMPTS = 5;
+
+    private const LOGIN_DECAY_SECONDS = 600;
 
     public function __construct(private readonly OtpService $otp) {}
 
@@ -167,13 +172,34 @@ class CustomerAuthService
     public function login(string $phone, string $password): array
     {
         $phone = Phone::international($phone);
+
+        // Keyed on the account being attacked, never the caller: an Iraqi mobile
+        // is trivially enumerable and the password only has to be eight
+        // characters, so an unthrottled login is a dictionary attack waiting to
+        // run. Only wrong passwords count, and a correct one clears the tally —
+        // an honest customer is never locked out by his own successful logins.
+        $throttleKey = 'customer-login:'.$phone;
+
+        if (RateLimiter::tooManyAttempts($throttleKey, self::LOGIN_MAX_ATTEMPTS)) {
+            throw ValidationException::withMessages([
+                'phone' => 'محاولات دخول كثيرة، حاول بعد '.RateLimiter::availableIn($throttleKey).' ثانية',
+            ]);
+        }
+
         $user = User::where('phone', $phone)->first();
 
         if (! $user || ! Hash::check($password, $user->password)) {
+            RateLimiter::hit($throttleKey, self::LOGIN_DECAY_SECONDS);
+
             throw ValidationException::withMessages([
                 'phone' => 'رقم الهاتف أو كلمة السر غير صحيحة',
             ]);
         }
+
+        // The password was right, so this is the account's owner, not an
+        // attacker — reset the counter before the status gates below, which
+        // turn a valid password away for reasons that are not brute force.
+        RateLimiter::clear($throttleKey);
 
         if ($user->phone_verified_at === null) {
             throw ValidationException::withMessages([

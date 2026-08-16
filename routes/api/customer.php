@@ -27,6 +27,9 @@ Route::prefix('customer')->name('customer.')->group(function () {
         Route::post('resend-otp', [AuthController::class, 'resendOtp'])
             ->middleware('throttle:otp-send')->name('resend-otp');
 
+        // Throttled inside the service so only wrong passwords count and a
+        // correct one resets the tally — a route middleware would lock a
+        // legitimate customer out on his sixth honest login.
         Route::post('login', [AuthController::class, 'login'])->name('login');
 
         Route::post('forgot-password', [AuthController::class, 'forgotPassword'])
@@ -59,11 +62,13 @@ Route::prefix('customer')->name('customer.')->group(function () {
 
     Route::get('specializations', [SpecializationController::class, 'index'])->name('specializations.index');
 
-    // Public on purpose: anyone browsing the app can apply, with or without an account.
+    // Public on purpose: anyone browsing the app can apply, with or without an
+    // account. No send cap here — the cap counted rejected validation attempts
+    // too, so an applicant correcting a photo format or size could burn the hour
+    // without ever submitting once. The unique-phone guard still blocks repeats.
     Route::prefix('technician-application')->name('technician-application.')->group(function () {
         Route::get('/', [TechnicianApplicationController::class, 'form'])->name('form');
-        Route::post('/', [TechnicianApplicationController::class, 'store'])
-            ->middleware('throttle:technician-application')->name('store');
+        Route::post('/', [TechnicianApplicationController::class, 'store'])->name('store');
     });
 
     Route::middleware('auth:user')->group(function () {

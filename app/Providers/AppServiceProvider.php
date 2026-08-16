@@ -56,20 +56,6 @@ class AppServiceProvider extends ServiceProvider
             ->by('otp-verify:'.$phone($request))
             ->response($tooMany('حاولت مرات كثيرة، انتظر عشر دقائق ثم أعد المحاولة')));
 
-        /**
-         * Counted per phone, never per address. Iraqi carriers put thousands of
-         * customers behind one address, so an address cap would lock a whole
-         * network out after three applications — and it fired before validation
-         * could tell an applicant his number was already on file.
-         */
-        RateLimiter::for('technician-application', fn (Request $request) => Limit::perHour(3)
-            ->by('tech-app:'.$phone($request))
-            ->response(fn () => ApiResponse::error(
-                'حاول بعد قليل، أرسلت طلبات كثيرة بهذا الرقم',
-                ['phone' => ['حاول بعد قليل، أرسلت طلبات كثيرة بهذا الرقم']],
-                429
-            )));
-
         RateLimiter::for('admin-login', fn (Request $request) => Limit::perMinute(20)
             ->by('admin-login:'.strtolower((string) $request->input('email'))));
     }
