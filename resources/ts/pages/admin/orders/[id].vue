@@ -532,7 +532,7 @@ onMounted(load)
                   >
                     {{ order.user?.name ?? '—' }}
                   </RouterLink>
-                  <div class="text-body-2 text-disabled" dir="ltr">{{ order.user?.phone }}</div>
+                  <div class="text-body-2 text-disabled" dir="ltr">{{ formatPhoneLocal(order.user?.phone) }}</div>
                 </div>
               </div>
 

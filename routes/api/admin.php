@@ -116,6 +116,8 @@ Route::prefix('admin')->name('admin.')->group(function () use ($crud) {
             ->middleware('permission:users.view,admin')->name('users.orders');
         Route::patch('users/{user}/status', [UserController::class, 'changeStatus'])
             ->middleware('permission:users.update,admin')->name('users.status');
+        Route::patch('users/{user}/phone', [UserController::class, 'updatePhone'])
+            ->middleware('permission:users.update,admin')->name('users.phone');
         Route::delete('users/{user}/deletion-request', [UserController::class, 'dismissDeletionRequest'])
             ->middleware('permission:users.update,admin')->name('users.deletion-request.dismiss');
 

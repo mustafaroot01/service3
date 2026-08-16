@@ -53,6 +53,20 @@ export const formatDateTime = (
   formatting: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' },
 ) => intlFormat(value, formatting)
 
+/**
+ * Display only: the backend stores and uses the international 9647… form; the
+ * panel shows the familiar local 07… instead. Nothing is sent back in this
+ * shape — it is purely how the number reads on screen.
+ */
+export const formatPhoneLocal = (phone: string | null | undefined) => {
+  if (!phone)
+    return '—'
+
+  const digits = phone.replace(/\D+/g, '')
+
+  return digits.startsWith('964') ? `0${digits.slice(3)}` : digits
+}
+
 /** The Arabic day-part, matching the backend App\Support\VisitWindow. */
 const arabicPeriod = (hour: number) =>
   hour < 12 ? 'صباحاً' : hour < 17 ? 'ظهراً' : hour < 20 ? 'مساءً' : 'ليلاً'

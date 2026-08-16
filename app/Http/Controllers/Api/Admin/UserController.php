@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Http\Requests\Api\Admin\UpdateUserPhoneRequest;
 use App\Http\Requests\Api\Admin\UpdateUserStatusRequest;
 use App\Http\Resources\Api\Admin\OrderResource;
 use App\Http\Resources\Api\Admin\UserResource;
@@ -40,6 +41,14 @@ class UserController extends AdminCrudController
         return ApiResponse::success(
             new UserResource($this->users->changeStatus($user, $request->status())),
             'تم تحديث حالة المستخدم بنجاح'
+        );
+    }
+
+    public function updatePhone(UpdateUserPhoneRequest $request, User $user): JsonResponse
+    {
+        return ApiResponse::success(
+            new UserResource($this->users->changePhone($user, $request->validated('phone'))),
+            'تم تحديث رقم الهاتف بنجاح'
         );
     }
 

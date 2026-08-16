@@ -312,3 +312,47 @@ it('refuses to register over a number that already has an account', function () 
         'phone' => '07712345678', 'password' => 'his-own-password',
     ])->assertOk();
 });
+
+/**
+ * The admin edits a customer's phone in the local 07… form, but the system
+ * keeps storing and serving the international 9647… one — nothing downstream
+ * changes shape, and the old session dies with the changed credential.
+ */
+it('normalises an admin phone edit and cuts the old session', function () {
+    $customer = User::factory()->verified()->create(['phone' => '9647711223344']);
+    $token = $customer->createToken('app')->plainTextToken;
+
+    $this->actingAs($this->superAdmin, 'admin')
+        ->patchJson("/api/v1/admin/users/{$customer->id}/phone", ['phone' => '07799001122'])
+        ->assertOk()
+        ->assertJsonPath('data.phone', '9647799001122');
+
+    expect($customer->fresh()->phone)->toBe('9647799001122');
+
+    app('auth')->forgetGuards();
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/customer/auth/me')->assertUnauthorized();
+});
+
+it('refuses a phone edit that collides with another account', function () {
+    $victim = User::factory()->verified()->create(['phone' => '9647755667788']);
+    $target = User::factory()->verified()->create(['phone' => '9647711223344']);
+
+    $this->actingAs($this->superAdmin, 'admin')
+        ->patchJson("/api/v1/admin/users/{$target->id}/phone", ['phone' => '07755667788'])
+        ->assertStatus(422)
+        ->assertJsonPath('errors.phone.0', 'رقم الهاتف مستخدم لحساب آخر');
+
+    expect($target->fresh()->phone)->toBe('9647711223344')
+        ->and($victim->fresh()->phone)->toBe('9647755667788');
+});
+
+it('keeps the same number a no-op edit rather than a self-collision', function () {
+    $customer = User::factory()->verified()->create(['phone' => '9647711223344']);
+
+    $this->actingAs($this->superAdmin, 'admin')
+        ->patchJson("/api/v1/admin/users/{$customer->id}/phone", ['phone' => '07711223344'])
+        ->assertOk()
+        ->assertJsonPath('data.phone', '9647711223344');
+});

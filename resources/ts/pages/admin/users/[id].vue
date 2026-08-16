@@ -61,6 +61,38 @@ const setStatus = async (status: string) => {
   }
 }
 
+const phoneDialog = ref(false)
+const phoneInput = ref('')
+const phoneError = ref<string | undefined>()
+const savingPhone = ref(false)
+
+const openPhoneEdit = () => {
+  phoneInput.value = formatPhoneLocal(customer.value?.phone)
+  phoneError.value = undefined
+  phoneDialog.value = true
+}
+
+const savePhone = async () => {
+  savingPhone.value = true
+  phoneError.value = undefined
+  try {
+    const res = await $api<ApiResponse<Customer>>(`/admin/users/${route.params.id}/phone`, {
+      method: 'PATCH',
+      body: { phone: phoneInput.value },
+    })
+
+    customer.value = res.data
+    toast.success(res.message)
+    phoneDialog.value = false
+  }
+  catch (e: any) {
+    phoneError.value = e?.data?.errors?.phone?.[0] ?? e?.data?.message ?? 'تعذّر تحديث الرقم'
+  }
+  finally {
+    savingPhone.value = false
+  }
+}
+
 const dismissDeletion = async () => {
   changingStatus.value = true
   try {
@@ -124,7 +156,7 @@ const details = computed(() => {
     return []
 
   return [
-    { icon: 'tabler-phone', label: 'رقم الهاتف', value: record.phone, ltr: true },
+    { icon: 'tabler-phone', label: 'رقم الهاتف', value: formatPhoneLocal(record.phone), ltr: true },
     { icon: 'tabler-gender-bigender', label: 'الجنس', value: genderLabel(record.gender) },
     { icon: 'tabler-map-2', label: 'المحافظة', value: record.governorate?.name ?? '—' },
     { icon: 'tabler-map-pin', label: 'القضاء', value: record.district?.name ?? '—' },
@@ -157,7 +189,19 @@ onMounted(load)
             </div>
 
             <div class="d-flex flex-wrap gap-x-5 gap-y-1 text-body-2 text-disabled mt-2">
-              <span dir="ltr">{{ customer.phone }}</span>
+              <span class="d-inline-flex align-center gap-1">
+                <span dir="ltr">{{ formatPhoneLocal(customer.phone) }}</span>
+                <VBtn
+                  icon="tabler-pencil"
+                  size="x-small"
+                  variant="text"
+                  color="primary"
+                  @click="openPhoneEdit"
+                >
+                  <VIcon icon="tabler-pencil" size="16" />
+                  <VTooltip activator="parent" location="top">تعديل رقم الهاتف</VTooltip>
+                </VBtn>
+              </span>
               <span>{{ customer.governorate?.name }} / {{ customer.district?.name }}</span>
               <span>{{ customer.orders_count ?? 0 }} طلب</span>
               <span>سجّل {{ formatDate(customer.created_at) }}</span>
@@ -285,5 +329,29 @@ onMounted(load)
         </template>
       </AppDataTableServer>
     </template>
+
+    <VDialog v-model="phoneDialog" max-width="420">
+      <VCard title="تعديل رقم الهاتف">
+        <VCardText>
+          <AppTextField
+            v-model="phoneInput"
+            label="رقم الهاتف"
+            placeholder="07712345678"
+            dir="ltr"
+            autofocus
+            :error-messages="phoneError"
+            @keyup.enter="savePhone"
+          />
+          <p class="text-caption text-disabled mt-2 mb-0">
+            سيُسجَّل خروج الزبون من كل أجهزته، ويدخل بالرقم الجديد.
+          </p>
+        </VCardText>
+        <VCardActions class="px-6 pb-4">
+          <VSpacer />
+          <VBtn color="secondary" variant="tonal" :disabled="savingPhone" @click="phoneDialog = false">إلغاء</VBtn>
+          <VBtn color="primary" :loading="savingPhone" @click="savePhone">حفظ</VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>

@@ -79,4 +79,16 @@ class UserService extends BaseCrudService
 
         return $this->hydrate($user->refresh());
     }
+
+    /**
+     * The phone arrives already normalised. Sessions are cut because the login
+     * credential just changed under the account's feet.
+     */
+    public function changePhone(User $user, string $phone): User
+    {
+        $user->forceFill(['phone' => $phone])->save();
+        $user->tokens()->delete();
+
+        return $this->hydrate($user->refresh());
+    }
 }

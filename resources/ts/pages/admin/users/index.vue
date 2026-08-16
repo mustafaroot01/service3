@@ -94,7 +94,7 @@ const statusColor = (status: string) => ({
     </template>
 
     <template #item.phone="{ item }">
-      <span dir="ltr">{{ item.phone }}</span>
+      <span dir="ltr">{{ formatPhoneLocal(item.phone) }}</span>
     </template>
 
     <template #item.governorate="{ item }">
