@@ -14,9 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 class ProfileController extends Controller
 {
-    public function __construct(private readonly CustomerAuthService $auth)
-    {
-    }
+    public function __construct(private readonly CustomerAuthService $auth) {}
 
     public function show(Request $request): JsonResponse
     {

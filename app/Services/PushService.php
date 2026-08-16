@@ -9,9 +9,7 @@ use Illuminate\Support\Facades\Log;
 
 class PushService
 {
-    public function __construct(private readonly SettingService $settings)
-    {
-    }
+    public function __construct(private readonly SettingService $settings) {}
 
     public function isConfigured(): bool
     {

@@ -25,9 +25,7 @@ class CustomerOrderService
         'service.category', 'technician', 'governorate', 'district', 'images', 'statusHistories',
     ];
 
-    public function __construct(private readonly OrderService $orders)
-    {
-    }
+    public function __construct(private readonly OrderService $orders) {}
 
     public function create(User $user, array $data): Order
     {

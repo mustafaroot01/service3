@@ -10,7 +10,7 @@ enum NotificationType: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::ORDER_STATUS => 'تغيّر حالة الطلب',
             self::TECHNICIAN_REASSIGNED => 'تغيّر الفني المكلّف',
             self::BLOG_POST => 'مقال جديد',

@@ -20,6 +20,5 @@ class OrderTechnicianReassigned
         public readonly Order $order,
         public readonly Technician $previous,
         public readonly Technician $current,
-    ) {
-    }
+    ) {}
 }

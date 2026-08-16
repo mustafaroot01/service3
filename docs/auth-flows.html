@@ -170,14 +170,9 @@ td code, th code{
 .note b{font-weight:700}
 .note.hot{--c:var(--bad)}
 
-/* ── مسار ملغى ── */
-.retired{
   border:1px dashed var(--line); border-radius:.75rem; padding:1.5rem 1.6rem;
   background:var(--panel); margin-top:2rem
 }
-.retired h3{margin:0 0 .5rem; font-size:1.1rem}
-.retired ul{margin:.8rem 0 0; padding-inline-start:1.2rem; color:var(--ink-2)}
-.retired li{margin-bottom:.4rem}
 
 footer{margin-top:5rem; padding-top:1.5rem; border-top:1px solid var(--line); color:var(--ink-3); font-size:.85rem}
 a{color:var(--l-login)}
@@ -201,9 +196,8 @@ a{color:var(--l-login)}
   </div>
 
   <nav class="lines">
-    <a class="line-chip" href="#signup" style="--c:var(--l-signup)"><i class="dot"></i><b>التسجيل</b><span>محطة واحدة</span></a>
+    <a class="line-chip" href="#signup" style="--c:var(--l-signup)"><i class="dot"></i><b>التسجيل والتوثيق</b><span>محطتان</span></a>
     <a class="line-chip" href="#login" style="--c:var(--l-login)"><i class="dot"></i><b>الدخول</b><span>٣ محطات</span></a>
-    <a class="line-chip" href="#confirm" style="--c:var(--l-dead)"><i class="dot"></i><b>تأكيد الحساب</b><span>ملغى</span></a>
     <a class="line-chip" href="#recover" style="--c:var(--l-recover)"><i class="dot"></i><b>نسيت كلمة السر</b><span>محطتان</span></a>
     <a class="line-chip" href="#delete" style="--c:var(--l-delete)"><i class="dot"></i><b>حذف الحساب</b><span>٣ محطات</span></a>
     <a class="line-chip" href="#guest" style="--c:var(--l-guest)"><i class="dot"></i><b>تصفّح كزائر</b><span>بلا حساب</span></a>
@@ -256,8 +250,8 @@ a{color:var(--l-login)}
 
 <!-- ══════════ التسجيل ══════════ -->
 <section id="signup" style="--c:var(--l-signup)">
-  <div class="sec-head"><i class="rule"></i><h2>الخط الأول — التسجيل</h2></div>
-  <p class="sec-note">شاشة واحدة، بلا رمز تحقق، ولا تُرجع توكناً. إنشاء الحساب والدخول خطوتان منفصلتان عن قصد.</p>
+  <div class="sec-head"><i class="rule"></i><h2>الخط الأول — التسجيل والتوثيق</h2></div>
+  <p class="sec-note">شاشتان: بياناته، ثم رمز واتساب يفتح الحساب. ولا واحدة منهما تُرجع توكناً — الدخول خطوة ثالثة مستقلة.</p>
 
   <div class="track">
     <article class="station">
@@ -299,11 +293,14 @@ a{color:var(--l-login)}
       </table></div>
 
       <div class="code">
-        <span class="code-label">٢٠١ — لا يوجد توكن هنا</span>
+        <span class="code-label">٢٠١ — الحساب أُنشئ <code>pending</code> والرمز انطلق</span>
         <pre><code>{
   "success": true,
-  "message": "تم إنشاء حسابك بنجاح، سجّل الدخول للمتابعة",
-  "data": { "phone": "9647719998877" }
+  "message": "أرسلنا رمز التحقق إلى واتساب",
+  "data": {
+    "phone": "9647719998877",
+    "resend_in": 59
+  }
 }</code></pre>
       </div>
 
@@ -336,8 +333,13 @@ a{color:var(--l-login)}
         <tbody>
           <tr>
             <td><span class="st ok">201</span></td>
-            <td>إشعار <code>message</code>، واحفظ <code>data.phone</code> مؤقتاً</td>
-            <td><span class="dest">شاشة الدخول</span> مع تعبئة الرقم</td>
+            <td>احفظ <code>data.phone</code> وابدأ عدّاداً بـ<code>resend_in</code></td>
+            <td><span class="dest">شاشة رمز التحقق</span></td>
+          </tr>
+          <tr>
+            <td><span class="st warn">429</span></td>
+            <td>طلبت رموزاً كثيرة، حاول بعد عشر دقائق</td>
+            <td><span class="dest stay">ابقَ بالشاشة</span></td>
           </tr>
           <tr>
             <td><span class="st bad">422</span><br><span class="num" style="font-size:.78rem;color:var(--ink-3)">رقم مسجّل</span></td>
@@ -352,7 +354,68 @@ a{color:var(--l-login)}
         </tbody>
       </table></div>
 
-      <div class="note hot"><b>لا تنتظر رمزاً ولا تفتح شاشة تحقق.</b> الحساب يُفتح <code>active</code> والرقم يُعتبر موثّقاً لحظة التسجيل، لكن الخادم لا يسلّم توكناً — الزبون يكتب كلمة السر التي اختارها للتوّ في شاشة الدخول.</div>
+      <div class="note"><b>الحساب يُنشأ فوراً بحالة <code>pending</code></b> والرمز يُرسل بعد حفظه — فلو تعثّرت خدمة الرسائل، البيانات لا تضيع ويكفي زر «إعادة إرسال».</div>
+
+      <div class="note"><b>رقم بدأ تسجيلاً ولم يوثّقه</b> يقبل تسجيلاً جديداً فوقه، لأنه ليس حساب أحد بعد. أما الرقم الموثّق فيُرفض دائماً. وفي الحالتين لا يفتح الحساب إلا برمز يصل لصاحب الهاتف.</div>
+    </article>
+
+    <article class="station">
+      <div class="marker">٢</div>
+      <h3>شاشة رمز التحقق</h3>
+      <p class="lede">حقل الرمز، عدّاد تنازلي بـ<code>resend_in</code>، وزر «لم يصلني الرمز» يُفعَّل بعد انتهائه.</p>
+
+      <div class="ep"><span class="verb post">POST</span><code>/customer/auth/verify-otp</code><span class="tag">عام</span></div>
+
+      <div class="code">
+        <span class="code-label">الطلب</span>
+        <pre><code>{ "phone": "07719998877", "code": "123456" }</code></pre>
+      </div>
+
+      <div class="code">
+        <span class="code-label">٢٠٠ — الحساب صار <code>active</code>، وبلا توكن</span>
+        <pre><code>{
+  "success": true,
+  "message": "تم توثيق رقمك، سجّل الدخول للمتابعة",
+  "data": { "phone": "9647719998877" }
+}</code></pre>
+      </div>
+
+      <div class="code">
+        <span class="code-label">٤٢٢ — رمز خاطئ</span>
+        <pre><code>{
+  "success": false,
+  "message": "الرمز غير صحيح",
+  "errors": { "otp": ["INVALID_CODE"] }
+}</code></pre>
+      </div>
+
+      <div class="ep"><span class="verb post">POST</span><code>/customer/auth/resend-otp</code><span class="tag">عام</span></div>
+      <div class="code">
+        <span class="code-label">٢٠٠ — <code>purpose</code> يقول أي رمز أُرسل</span>
+        <pre><code>{
+  "success": true,
+  "message": "تم إرسال رمز جديد",
+  "data": {
+    "phone": "9647719998877",
+    "purpose": "register",
+    "resend_in": 59
+  }
+}</code></pre>
+      </div>
+
+      <div class="exits tbl"><table>
+        <thead><tr><th>الرد</th><th><code>errors</code></th><th>ماذا يعرض التطبيق</th><th>إلى أين</th></tr></thead>
+        <tbody>
+          <tr><td><span class="st ok">200</span></td><td>—</td><td>إشعار <code>message</code></td><td><span class="dest">شاشة الدخول</span> مع تعبئة الرقم</td></tr>
+          <tr><td><span class="st bad">422</span></td><td><code>otp[0] = INVALID_CODE</code></td><td>«الرمز غير صحيح» — أفرغ الحقل</td><td><span class="dest stay">ابقَ</span></td></tr>
+          <tr><td><span class="st bad">422</span></td><td><code>otp[0] = EXPIRED_CODE</code></td><td>«انتهت الصلاحية» + فعّل زر إعادة الإرسال</td><td><span class="dest stay">ابقَ</span></td></tr>
+          <tr><td><span class="st bad">422</span></td><td><code>phone[0]</code> = هذا الرقم موثّق بالفعل، سجّل الدخول</td><td>الرسالة كإشعار</td><td><span class="dest">شاشة الدخول</span></td></tr>
+          <tr><td><span class="st bad">422</span></td><td><code>phone[0]</code> = لا يوجد حساب بهذا الرقم</td><td>أعِده لشاشة إنشاء الحساب</td><td><span class="dest">إنشاء حساب</span></td></tr>
+          <tr><td><span class="st warn">429</span></td><td>—</td><td>حاولت مرات كثيرة، انتظر عشر دقائق</td><td><span class="dest stay">ابقَ</span></td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="note hot"><b>التوثيق لا يسلّم توكناً.</b> يفتح الحساب فقط، ثم يكتب الزبون كلمة السر التي اختارها للتوّ في شاشة الدخول — إنشاء الحساب والدخول يبقيان خطوتين منفصلتين.</div>
     </article>
   </div>
 </section>
@@ -416,6 +479,12 @@ a{color:var(--l-login)}
             <td>رقم الهاتف أو كلمة السر غير صحيحة</td>
             <td>الرسالة تحت حقل الهاتف</td>
             <td><span class="dest stay">ابقَ</span></td>
+          </tr>
+          <tr>
+            <td><span class="st bad">422</span></td>
+            <td>لم يتم توثيق رقمك بعد، اطلب رمز التحقق</td>
+            <td>سجّل ولم يكمل الرمز — نادِ <code>resend-otp</code> وانقله</td>
+            <td><span class="dest">شاشة رمز التحقق</span></td>
           </tr>
           <tr>
             <td><span class="st bad">422</span></td>
@@ -496,22 +565,6 @@ a{color:var(--l-login)}
   </div>
 </section>
 
-<!-- ══════════ تأكيد الحساب ══════════ -->
-<section id="confirm" style="--c:var(--l-dead)">
-  <div class="sec-head"><i class="rule"></i><h2>تأكيد الحساب — مسار ملغى</h2></div>
-
-  <div class="retired">
-    <h3>لا توجد شاشة تأكيد، ولا رمز عند التسجيل</h3>
-    <p class="sec-note" style="margin-top:.3rem">كان التسجيل يرسل رمزاً على واتساب وينتظر تأكيده. أُلغي هذا كله: الرقم يُؤخذ كما كتبه الزبون، والحساب يُفتح فوراً.</p>
-    <ul>
-      <li><code>POST /customer/auth/verify-otp</code> — <b>حُذف</b>، ينادى الآن فيرجع <span class="st gone">404</span>. أزِله من التطبيق.</li>
-      <li><code>phone_verified</code> يرجع <code>true</code> دائماً لكل حساب. لا تبنِ عليه شرطاً ولا شارة.</li>
-      <li><code>POST /customer/auth/resend-otp</code> <b>لم يُحذف</b> لكنه صار لاستعادة كلمة السر فقط — انظر الخط الثالث.</li>
-      <li>لا توجد حالة «قيد الانتظار» للحسابات. حالات الحساب الأربع في جدول الأسفل.</li>
-    </ul>
-  </div>
-</section>
-
 <!-- ══════════ الاستعادة ══════════ -->
 <section id="recover" style="--c:var(--l-recover)">
   <div class="sec-head"><i class="rule"></i><h2>الخط الثالث — نسيت كلمة السر</h2></div>
@@ -552,6 +605,10 @@ a{color:var(--l-login)}
             <td>الرسالة تحت الحقل، وزر «إنشاء حساب»</td><td><span class="dest stay">ابقَ</span></td>
           </tr>
           <tr>
+            <td><span class="st bad">422</span></td><td><code>errors.phone[0]</code> = لم يتم توثيق رقمك بعد، اطلب رمز التحقق</td>
+            <td>حسابه ما زال <code>pending</code> — لا استعادة قبل التوثيق</td><td><span class="dest">شاشة رمز التحقق</span></td>
+          </tr>
+          <tr>
             <td><span class="st bad">422</span></td><td><code>errors.otp[0]</code> = <code>COOLDOWN</code></td>
             <td><code>message</code> فيها الثواني المتبقية</td><td><span class="dest stay">ابقَ</span></td>
           </tr>
@@ -571,7 +628,7 @@ a{color:var(--l-login)}
       <p class="lede">الرمز الواصل على واتساب، وكلمة السر الجديدة وتأكيدها، وزر «إعادة إرسال» معطّل حتى ينتهي العدّاد.</p>
 
       <div class="ep"><span class="verb post">POST</span><code>/customer/auth/resend-otp</code><span class="tag">عام</span></div>
-      <p class="sec-note" style="margin:-.4rem 0 1rem;font-size:.9rem">لزر «لم يصلني الرمز». طلبه ورده مطابقان لـ<code>forgot-password</code> حرفياً.</p>
+      <p class="sec-note" style="margin:-.4rem 0 1rem;font-size:.9rem">زر «لم يصلني الرمز» — نفسه في شاشتَي الرمز. الخادم يختار نوع الرمز من حالة الحساب ويخبرك به في <code>data.purpose</code>: <code>register</code> لحساب لم يوثّق بعد، و<code>reset</code> لحساب موثّق.</p>
 
       <div class="ep"><span class="verb post">POST</span><code>/customer/auth/reset-password</code><span class="tag">عام</span></div>
 
@@ -797,6 +854,7 @@ a{color:var(--l-login)}
   <div class="tbl"><table>
     <thead><tr><th><code>status</code></th><th><code>status_label</code></th><th>الدخول</th><th>الرسالة</th></tr></thead>
     <tbody>
+      <tr><td><code>pending</code></td><td>بانتظار التوثيق</td><td><span class="st bad">مرفوض</span></td><td>لم يتم توثيق رقمك بعد، اطلب رمز التحقق</td></tr>
       <tr><td><code>active</code></td><td>نشط</td><td><span class="st ok">مسموح</span></td><td>—</td></tr>
       <tr><td><code>inactive</code></td><td>غير نشط</td><td><span class="st bad">مرفوض</span></td><td>حسابك غير مفعّل، راجع الإدارة</td></tr>
       <tr><td><code>suspended</code></td><td>موقوف</td><td><span class="st bad">مرفوض</span></td><td>حسابك غير مفعّل، راجع الإدارة</td></tr>
@@ -804,7 +862,7 @@ a{color:var(--l-login)}
     </tbody>
   </table></div>
 
-  <div class="note"><b>لا توجد حالة «قيد الانتظار».</b> أُلغيت مع إلغاء توثيق الهاتف — أي حساب يُنشأ يبدأ <code>active</code> مباشرة.</div>
+  <div class="note"><b><code>pending</code> هي الحالة الوحيدة التي يخرج منها الحساب بنفسه</b> — برمز التحقق. البقية لا تتغيّر إلا بيد الإدارة.</div>
 </section>
 
 <!-- ══════════ مرجع سريع ══════════ -->
@@ -814,7 +872,8 @@ a{color:var(--l-login)}
   <div class="tbl"><table>
     <thead><tr><th>النقطة</th><th>الوصول</th><th>يرجع توكناً</th><th>الشاشة التالية</th></tr></thead>
     <tbody>
-      <tr><td><code>POST /customer/auth/register</code></td><td>عام</td><td>لا</td><td>الدخول</td></tr>
+      <tr><td><code>POST /customer/auth/register</code></td><td>عام</td><td>لا</td><td>شاشة رمز التحقق</td></tr>
+      <tr><td><code>POST /customer/auth/verify-otp</code></td><td>عام</td><td>لا</td><td>الدخول</td></tr>
       <tr><td><code>POST /customer/auth/login</code></td><td>عام</td><td><b>نعم</b></td><td>الرئيسية</td></tr>
       <tr><td><code>GET /customer/auth/me</code></td><td>🔒 توكن</td><td>لا</td><td>الرئيسية أو الدخول</td></tr>
       <tr><td><code>POST /customer/auth/logout</code></td><td>🔒 توكن</td><td>لا</td><td>الدخول</td></tr>
@@ -823,7 +882,6 @@ a{color:var(--l-login)}
       <tr><td><code>POST /customer/auth/reset-password</code></td><td>عام</td><td>لا</td><td>الدخول</td></tr>
       <tr><td><code>POST /customer/profile/change-password</code></td><td>🔒 توكن</td><td>لا</td><td>نفس الشاشة</td></tr>
       <tr><td><code>POST /customer/profile/delete-request</code></td><td>🔒 توكن</td><td>لا</td><td>الدخول</td></tr>
-      <tr><td style="text-decoration:line-through;opacity:.55"><code>POST /customer/auth/verify-otp</code></td><td colspan="3"><span class="st gone">محذوف</span> يرجع <code>404</code></td></tr>
     </tbody>
   </table></div>
 </section>

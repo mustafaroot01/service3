@@ -16,6 +16,5 @@ class OrderStatusChanged
         public readonly ?OrderStatus $from,
         public readonly OrderStatus $to,
         public readonly ?string $note = null,
-    ) {
-    }
+    ) {}
 }

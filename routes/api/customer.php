@@ -17,8 +17,12 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('customer')->name('customer.')->group(function () {
 
     Route::prefix('auth')->name('auth.')->group(function () {
-        // Signup no longer sends a code, so it is not held to the messaging cap.
-        Route::post('register', [AuthController::class, 'register'])->name('register');
+        // Signup sends a WhatsApp code, so it is held to the messaging cap.
+        Route::post('register', [AuthController::class, 'register'])
+            ->middleware('throttle:otp-send')->name('register');
+
+        Route::post('verify-otp', [AuthController::class, 'verifyOtp'])
+            ->middleware('throttle:otp-verify')->name('verify-otp');
 
         Route::post('resend-otp', [AuthController::class, 'resendOtp'])
             ->middleware('throttle:otp-send')->name('resend-otp');

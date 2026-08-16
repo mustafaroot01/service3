@@ -11,9 +11,7 @@ use Illuminate\Http\JsonResponse;
 
 class TechnicianApplicationController extends Controller
 {
-    public function __construct(private readonly TechnicianApplicationService $applications)
-    {
-    }
+    public function __construct(private readonly TechnicianApplicationService $applications) {}
 
     /** Lets the app hide the whole entry point while the form is switched off. */
     public function form(): JsonResponse

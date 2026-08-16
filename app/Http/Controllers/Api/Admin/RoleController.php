@@ -11,9 +11,7 @@ use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
-    public function __construct(private readonly RoleService $roles)
-    {
-    }
+    public function __construct(private readonly RoleService $roles) {}
 
     public function index(): JsonResponse
     {

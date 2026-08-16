@@ -9,7 +9,7 @@ enum LegalPageKey: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::PRIVACY_POLICY => 'سياسة الخصوصية',
             self::TERMS_OF_USE => 'شروط الاستخدام',
         };

@@ -83,6 +83,7 @@ const statusOptions = [
   { title: 'نشط', value: 'active' },
   { title: 'غير نشط', value: 'inactive' },
   { title: 'موقوف', value: 'suspended' },
+  { title: 'بانتظار التوثيق', value: 'pending' },
   { title: 'مجدول للحذف', value: 'scheduled_for_deletion' },
 ]
 

@@ -13,9 +13,7 @@ use Illuminate\Http\JsonResponse;
 
 class AdminController extends AdminCrudController
 {
-    public function __construct(private readonly AdminService $admins)
-    {
-    }
+    public function __construct(private readonly AdminService $admins) {}
 
     protected function service(): BaseCrudService
     {

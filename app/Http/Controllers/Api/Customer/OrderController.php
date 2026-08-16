@@ -13,9 +13,7 @@ use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
-    public function __construct(private readonly CustomerOrderService $orders)
-    {
-    }
+    public function __construct(private readonly CustomerOrderService $orders) {}
 
     public function visitWindow(): JsonResponse
     {

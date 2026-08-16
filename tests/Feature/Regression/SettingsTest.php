@@ -92,7 +92,9 @@ it('reads every setting in a single query', function () {
 
     $service = app(SettingService::class);
     $queries = 0;
-    DB::listen(function () use (&$queries) { $queries++; });
+    DB::listen(function () use (&$queries) {
+        $queries++;
+    });
 
     $service->get(SettingKey::OTP_BASE_URL);
     $service->get(SettingKey::OTP_API_KEY);

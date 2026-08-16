@@ -18,8 +18,7 @@ class UserController extends AdminCrudController
     public function __construct(
         private readonly UserService $users,
         private readonly OrderService $orders,
-    ) {
-    }
+    ) {}
 
     protected function service(): BaseCrudService
     {

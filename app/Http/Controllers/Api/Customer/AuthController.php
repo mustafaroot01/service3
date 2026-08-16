@@ -7,6 +7,7 @@ use App\Http\Requests\Api\Customer\LoginRequest;
 use App\Http\Requests\Api\Customer\PhoneRequest;
 use App\Http\Requests\Api\Customer\RegisterRequest;
 use App\Http\Requests\Api\Customer\ResetPasswordRequest;
+use App\Http\Requests\Api\Customer\VerifyOtpRequest;
 use App\Http\Resources\Api\Customer\UserResource;
 use App\Services\CustomerAuthService;
 use App\Support\ApiResponse;
@@ -21,7 +22,18 @@ class AuthController extends Controller
     {
         return ApiResponse::created(
             $this->auth->register($request->validated()),
-            'تم إنشاء حسابك بنجاح، سجّل الدخول للمتابعة'
+            'أرسلنا رمز التحقق إلى واتساب'
+        );
+    }
+
+    public function verifyOtp(VerifyOtpRequest $request): JsonResponse
+    {
+        return ApiResponse::success(
+            $this->auth->verifyRegistration(
+                $request->validated('phone'),
+                $request->validated('code')
+            ),
+            'تم توثيق رقمك، سجّل الدخول للمتابعة'
         );
     }
 

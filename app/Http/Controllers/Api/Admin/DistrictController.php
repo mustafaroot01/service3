@@ -12,9 +12,7 @@ use Illuminate\Http\JsonResponse;
 
 class DistrictController extends AdminCrudController
 {
-    public function __construct(private readonly DistrictService $districts)
-    {
-    }
+    public function __construct(private readonly DistrictService $districts) {}
 
     protected function service(): BaseCrudService
     {

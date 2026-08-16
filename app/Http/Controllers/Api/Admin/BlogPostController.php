@@ -12,9 +12,7 @@ use Illuminate\Http\JsonResponse;
 
 class BlogPostController extends AdminCrudController
 {
-    public function __construct(private readonly BlogPostService $posts)
-    {
-    }
+    public function __construct(private readonly BlogPostService $posts) {}
 
     protected function service(): BaseCrudService
     {

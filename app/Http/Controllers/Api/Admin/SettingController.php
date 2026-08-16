@@ -10,9 +10,7 @@ use Illuminate\Http\JsonResponse;
 
 class SettingController extends Controller
 {
-    public function __construct(private readonly SettingService $settings)
-    {
-    }
+    public function __construct(private readonly SettingService $settings) {}
 
     public function index(): JsonResponse
     {

@@ -20,9 +20,7 @@ class OtpService
 
     private const TTL_MINUTES = 10;
 
-    public function __construct(private readonly SettingService $settings)
-    {
-    }
+    public function __construct(private readonly SettingService $settings) {}
 
     public function send(string $phone, OtpPurpose $purpose): PhoneVerification
     {

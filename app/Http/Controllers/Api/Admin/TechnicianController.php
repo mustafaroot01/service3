@@ -21,8 +21,7 @@ class TechnicianController extends AdminCrudController
     public function __construct(
         private readonly TechnicianService $technicians,
         private readonly OrderService $orders,
-    ) {
-    }
+    ) {}
 
     protected function service(): BaseCrudService
     {

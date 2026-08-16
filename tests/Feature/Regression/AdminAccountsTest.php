@@ -274,21 +274,18 @@ it('keeps the session alive when nothing about access changed', function () {
         ->getJson('/api/v1/admin/users?per_page=1')->assertOk();
 });
 
-it('refuses to sign up over a number that already has an account, verified or not', function () {
-    $victim = User::factory()->create([
-        'name' => 'صاحب الحساب الأصلي',
-        'phone' => '9647712345678',
-        'password' => 'his-own-password',
-    ]);
-
-    $victim->forceFill(['phone_verified_at' => null])->save();
-
+/**
+ * A verified number is somebody's account and nobody may sign up over it. An
+ * unverified one is an abandoned signup, so it may be claimed — but only by
+ * whoever can read the code sent to that phone.
+ */
+it('refuses to sign up over a verified number, and gates an unverified one behind the code', function () {
     $governorate = \App\Models\Governorate::create(['name' => 'بغداد', 'is_active' => true]);
     $district = \App\Models\District::create([
         'governorate_id' => $governorate->id, 'name' => 'الكرخ', 'is_active' => true,
     ]);
 
-    $this->postJson('/api/v1/customer/auth/register', [
+    $signup = [
         'name' => 'مهاجم',
         'gender' => 'female',
         'phone' => '07712345678',
@@ -297,13 +294,33 @@ it('refuses to sign up over a number that already has an account, verified or no
         'governorate_id' => $governorate->id,
         'district_id' => $district->id,
         'terms_accepted' => true,
-    ])->assertStatus(422)->assertJsonValidationErrors('phone');
+    ];
 
-    expect($victim->fresh()->name)->toBe('صاحب الحساب الأصلي');
+    $owner = User::factory()->verified()->create([
+        'name' => 'صاحب الحساب الأصلي',
+        'phone' => '9647712345678',
+        'password' => 'his-own-password',
+    ]);
+
+    $this->postJson('/api/v1/customer/auth/register', $signup)
+        ->assertStatus(422)
+        ->assertJsonPath('errors.phone.0', 'رقم الهاتف مسجّل بالفعل، سجّل الدخول أو استعد كلمة السر');
+
+    expect($owner->fresh()->name)->toBe('صاحب الحساب الأصلي');
+
+    // Now the same number, abandoned before verification.
+    $owner->forceFill(['status' => UserStatus::PENDING, 'phone_verified_at' => null])->save();
 
     app('auth')->forgetGuards();
 
+    $this->postJson('/api/v1/customer/auth/register', $signup)->assertCreated();
+
+    app('auth')->forgetGuards();
+
+    // Claimed on paper, but useless without the code.
     $this->postJson('/api/v1/customer/auth/login', [
         'phone' => '07712345678', 'password' => 'attacker-pass',
-    ])->assertStatus(422);
+    ])->assertStatus(422)->assertJsonPath('errors.phone.0', 'لم يتم توثيق رقمك بعد، اطلب رمز التحقق');
+
+    expect(User::where('phone', '9647712345678')->sole()->status)->toBe(UserStatus::PENDING);
 });

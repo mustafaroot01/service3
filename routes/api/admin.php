@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AdminController;
 use App\Http\Controllers\Api\Admin\AuthController;
 use App\Http\Controllers\Api\Admin\BlogPostController;
 use App\Http\Controllers\Api\Admin\CategoryController;
@@ -8,10 +9,9 @@ use App\Http\Controllers\Api\Admin\DistrictController;
 use App\Http\Controllers\Api\Admin\GovernorateController;
 use App\Http\Controllers\Api\Admin\LegalPageController;
 use App\Http\Controllers\Api\Admin\OrderController;
-use App\Http\Controllers\Api\Admin\ServiceController;
-use App\Http\Controllers\Api\Admin\AdminController;
 use App\Http\Controllers\Api\Admin\PermissionController;
 use App\Http\Controllers\Api\Admin\RoleController;
+use App\Http\Controllers\Api\Admin\ServiceController;
 use App\Http\Controllers\Api\Admin\SettingController;
 use App\Http\Controllers\Api\Admin\SliderController;
 use App\Http\Controllers\Api\Admin\SpecializationController;

@@ -9,7 +9,7 @@ enum ServiceStatus: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::ACTIVE => 'مفعّل',
             self::INACTIVE => 'غير مفعّل',
         };

@@ -11,9 +11,7 @@ use Illuminate\Http\Request;
 
 class PermissionController extends Controller
 {
-    public function __construct(private readonly PermissionService $permissions)
-    {
-    }
+    public function __construct(private readonly PermissionService $permissions) {}
 
     public function index(Request $request): JsonResponse
     {

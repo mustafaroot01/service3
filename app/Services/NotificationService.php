@@ -8,9 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class NotificationService
 {
-    public function __construct(private readonly PushService $push)
-    {
-    }
+    public function __construct(private readonly PushService $push) {}
 
     /**
      * The stored row is the record the recipient reads in the app, so it is

@@ -184,8 +184,8 @@ class TechnicianService extends BaseCrudService
      * Uploading a type replaces every existing file of that type.
      *
      * @param  array<string, array<int, UploadedFile>>  $uploads
-     * @param  array<int, string>  $written    paths created here, for rollback cleanup
-     * @param  array<int, string>  $replaced   paths superseded here, deleted after commit
+     * @param  array<int, string>  $written  paths created here, for rollback cleanup
+     * @param  array<int, string>  $replaced  paths superseded here, deleted after commit
      */
     private function writeMedia(Technician $technician, array $uploads, array &$written, array &$replaced = []): void
     {
@@ -205,8 +205,7 @@ class TechnicianService extends BaseCrudService
 
             if ($room <= 0) {
                 throw ValidationException::withMessages([
-                    $type === MediaType::WORK_SAMPLE ? 'work_samples' : $type->value =>
-                        "بلغت الحد الأقصى ({$type->limit()}) لـ{$type->label()}، احذف واحدة قبل الإضافة",
+                    $type === MediaType::WORK_SAMPLE ? 'work_samples' : $type->value => "بلغت الحد الأقصى ({$type->limit()}) لـ{$type->label()}، احذف واحدة قبل الإضافة",
                 ]);
             }
 

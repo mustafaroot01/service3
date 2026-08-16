@@ -12,9 +12,7 @@ use Illuminate\Http\JsonResponse;
 
 class SliderController extends AdminCrudController
 {
-    public function __construct(private readonly SliderService $sliders)
-    {
-    }
+    public function __construct(private readonly SliderService $sliders) {}
 
     protected function service(): BaseCrudService
     {

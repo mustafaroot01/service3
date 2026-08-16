@@ -10,7 +10,5 @@ class BlogPostPublished
 {
     use Dispatchable, SerializesModels;
 
-    public function __construct(public readonly BlogPost $post)
-    {
-    }
+    public function __construct(public readonly BlogPost $post) {}
 }

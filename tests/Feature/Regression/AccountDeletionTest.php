@@ -139,8 +139,12 @@ it('needs a token — a visitor cannot request anyone deleted', function () {
     $this->postJson('/api/v1/customer/profile/delete-request')->assertUnauthorized();
 });
 
-it('opens the account at signup but hands back no session', function () {
-    $response = $this->postJson('/api/v1/customer/auth/register', [
+/**
+ * Signup opens nothing on its own: the account waits on a code, and the code
+ * only opens it — the session still has to be earned on the login screen.
+ */
+it('holds a new signup at pending until the code arrives, then still asks for a login', function () {
+    $signup = [
         'name' => 'زبون جديد',
         'gender' => 'male',
         'phone' => '07766600123',
@@ -149,14 +153,45 @@ it('opens the account at signup but hands back no session', function () {
         'governorate_id' => $this->governorate->id,
         'district_id' => $this->district->id,
         'terms_accepted' => true,
-    ])->assertCreated()->assertJsonPath('data.phone', '9647766600123');
+    ];
+
+    $response = $this->postJson('/api/v1/customer/auth/register', $signup)
+        ->assertCreated()
+        ->assertJsonPath('data.phone', '9647766600123')
+        ->assertJsonPath('message', 'أرسلنا رمز التحقق إلى واتساب');
 
     expect($response->json('data'))->not->toHaveKey('token');
 
     $created = User::where('phone', '9647766600123')->sole();
 
-    expect($created->phone_verified_at)->not->toBeNull()
-        ->and($created->status)->toBe(UserStatus::ACTIVE)
+    expect($created->status)->toBe(UserStatus::PENDING)
+        ->and($created->phone_verified_at)->toBeNull()
+        ->and($created->tokens()->count())->toBe(0);
+
+    app('auth')->forgetGuards();
+
+    $this->postJson('/api/v1/customer/auth/login', [
+        'phone' => '07766600123', 'password' => 'hoame-2026',
+    ])->assertStatus(422)->assertJsonPath('errors.phone.0', 'لم يتم توثيق رقمك بعد، اطلب رمز التحقق');
+
+    app('auth')->forgetGuards();
+
+    $this->postJson('/api/v1/customer/auth/verify-otp', [
+        'phone' => '07766600123', 'code' => '000000',
+    ])->assertStatus(422)->assertJsonPath('errors.otp.0', 'INVALID_CODE');
+
+    app('auth')->forgetGuards();
+
+    $verified = $this->postJson('/api/v1/customer/auth/verify-otp', [
+        'phone' => '07766600123', 'code' => OtpService::FAKE_CODE,
+    ])->assertOk()->assertJsonPath('message', 'تم توثيق رقمك، سجّل الدخول للمتابعة');
+
+    expect($verified->json('data'))->not->toHaveKey('token');
+
+    $created->refresh();
+
+    expect($created->status)->toBe(UserStatus::ACTIVE)
+        ->and($created->phone_verified_at)->not->toBeNull()
         ->and($created->tokens()->count())->toBe(0);
 
     app('auth')->forgetGuards();
@@ -164,6 +199,27 @@ it('opens the account at signup but hands back no session', function () {
     $this->postJson('/api/v1/customer/auth/login', [
         'phone' => '07766600123', 'password' => 'hoame-2026',
     ])->assertOk()->assertJsonStructure(['data' => ['user', 'token', 'token_type']]);
+});
+
+it('refuses to verify a number that is already verified', function () {
+    $this->postJson('/api/v1/customer/auth/verify-otp', [
+        'phone' => $this->customer->phone, 'code' => OtpService::FAKE_CODE,
+    ])->assertStatus(422)->assertJsonPath('errors.phone.0', 'هذا الرقم موثّق بالفعل، سجّل الدخول');
+});
+
+it('sends a signup code, not a reset code, while the account is still pending', function () {
+    $pending = User::factory()->create(['phone' => '9647766600124']);
+    $pending->forceFill(['status' => UserStatus::PENDING, 'phone_verified_at' => null])->save();
+
+    $this->postJson('/api/v1/customer/auth/resend-otp', ['phone' => '07766600124'])
+        ->assertOk()
+        ->assertJsonPath('data.purpose', 'register');
+
+    app('auth')->forgetGuards();
+
+    $this->postJson('/api/v1/customer/auth/forgot-password', ['phone' => '07766600124'])
+        ->assertStatus(422)
+        ->assertJsonPath('errors.phone.0', 'لم يتم توثيق رقمك بعد، اطلب رمز التحقق');
 });
 
 it('refuses to send a code to a number that has no account', function () {

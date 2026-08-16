@@ -37,7 +37,10 @@ return [
 
 
     'otp' => [
-        'fake' => env('OTP_FAKE', false),
+        // PHPUnit hands its <env> values through as the string "1", which a
+        // strict comparison downstream reads as "not fake" — and the suite then
+        // tries to reach the real provider.
+        'fake' => filter_var(env('OTP_FAKE', false), FILTER_VALIDATE_BOOLEAN),
     ],
 
     'onesignal' => [

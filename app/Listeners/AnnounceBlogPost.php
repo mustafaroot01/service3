@@ -21,9 +21,7 @@ class AnnounceBlogPost implements ShouldQueue
 
     use InteractsWithQueue;
 
-    public function __construct(private readonly PushService $push)
-    {
-    }
+    public function __construct(private readonly PushService $push) {}
 
     public function handle(BlogPostPublished $event): void
     {

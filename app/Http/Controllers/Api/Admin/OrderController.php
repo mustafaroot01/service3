@@ -16,9 +16,7 @@ use Illuminate\Http\JsonResponse;
 
 class OrderController extends AdminCrudController
 {
-    public function __construct(private readonly OrderService $orders)
-    {
-    }
+    public function __construct(private readonly OrderService $orders) {}
 
     protected function service(): BaseCrudService
     {

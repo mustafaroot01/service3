@@ -25,9 +25,7 @@ class SendOrderStatusNotification implements ShouldQueue
 
     public array $backoff = [10, 60];
 
-    public function __construct(private readonly NotificationService $notifications)
-    {
-    }
+    public function __construct(private readonly NotificationService $notifications) {}
 
     public function handle(OrderStatusChanged $event): void
     {

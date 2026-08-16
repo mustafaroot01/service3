@@ -30,9 +30,7 @@ abstract class BaseCrudService extends BaseService
         return $this->query();
     }
 
-    protected function applyFilters(Builder $query, Request $request): void
-    {
-    }
+    protected function applyFilters(Builder $query, Request $request): void {}
 
     /** A caller-supplied page size is untrusted input; an unbounded one loads the whole table. */
     protected function perPage(Request $request): int
@@ -143,6 +141,7 @@ abstract class BaseCrudService extends BaseService
 
             if (! $data[$field] instanceof UploadedFile) {
                 unset($data[$field]);
+
                 continue;
             }
 
