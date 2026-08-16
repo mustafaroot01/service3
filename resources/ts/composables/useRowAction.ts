@@ -20,7 +20,12 @@ export function useRowAction(refresh: () => Promise<unknown>) {
       return true
     }
     catch (e: any) {
-      toast.error(e?.data?.message ?? 'تعذّر تنفيذ العملية')
+      // A 422 carries the useful message under errors.field[0] while message
+      // stays the generic "البيانات المدخلة غير صحيحة" — show the specific one.
+      const body = e?.data
+      const firstError = body?.errors ? (Object.values(body.errors)[0] as string[] | undefined)?.[0] : undefined
+
+      toast.error(firstError ?? body?.message ?? 'تعذّر تنفيذ العملية')
 
       return false
     }
