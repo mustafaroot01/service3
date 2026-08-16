@@ -290,7 +290,7 @@ const summary = computed(() => {
     return []
 
   return [
-    { icon: 'tabler-clock-plus', label: 'وقت تقديم الطلب', value: formatDateTime(record.created_at) },
+    { icon: 'tabler-clock-plus', label: 'وقت تقديم الطلب', value: formatDateTimeArabic(record.created_at) },
     { icon: 'tabler-calendar-clock', label: 'موعد الزيارة', value: formatDate(record.scheduled_date), window: true },
     { icon: 'tabler-tool', label: 'الخدمة', value: record.service?.name ?? '—', hint: record.service?.category?.name },
     { icon: 'tabler-hourglass', label: record.is_final ? 'استغرق' : 'عمر الطلب', value: age.value },
@@ -386,7 +386,7 @@ onMounted(load)
 
           <div v-if="isCancelled" class="d-flex align-center gap-2 text-error">
             <VIcon icon="tabler-circle-x" size="20" />
-            <span class="text-body-2">أُلغي الطلب من {{ order.cancelled_by_label ?? '—' }} — {{ formatDateTime(order.cancelled_at) }}</span>
+            <span class="text-body-2">أُلغي الطلب من {{ order.cancelled_by_label ?? '—' }} — {{ formatDateTimeArabic(order.cancelled_at) }}</span>
           </div>
 
           <div v-else class="stages">
@@ -396,7 +396,7 @@ onMounted(load)
                   <VIcon :icon="stage.done ? 'tabler-check' : 'tabler-point'" size="14" />
                 </div>
                 <div class="stage__label">{{ stage.label }}</div>
-                <div class="stage__time">{{ stage.at ? formatDateTime(stage.at) : '—' }}</div>
+                <div class="stage__time">{{ stage.at ? formatDateTimeArabic(stage.at) : '—' }}</div>
               </div>
 
               <div
@@ -486,7 +486,7 @@ onMounted(load)
           <VCard v-if="inspectionNote_ || timeOf('inspected')" title="الكشف" class="mb-6">
             <VCardText>
               <div class="text-caption text-disabled">وقت الكشف</div>
-              <div class="text-body-1 mb-3">{{ formatDateTime(timeOf('inspected')) }}</div>
+              <div class="text-body-1 mb-3">{{ formatDateTimeArabic(timeOf('inspected')) }}</div>
 
               <div class="text-caption text-disabled">ما كُتب في الكشف</div>
               <VAlert type="info" variant="tonal" density="compact" class="mt-1">
@@ -506,7 +506,7 @@ onMounted(load)
                 >
                   <div class="d-flex justify-space-between flex-wrap gap-2 mb-1">
                     <span class="font-weight-medium">{{ entry.to_status_label }}</span>
-                    <span class="text-caption text-disabled">{{ formatDateTime(entry.created_at) }}</span>
+                    <span class="text-caption text-disabled">{{ formatDateTimeArabic(entry.created_at) }}</span>
                   </div>
                   <div class="text-caption text-disabled">
                     {{ entry.actor_type_label }}<template v-if="entry.actor_name"> — {{ entry.actor_name }}</template>
@@ -598,7 +598,7 @@ onMounted(load)
 
                 <div v-if="timeOf('assigned')" class="mb-4">
                   <div class="text-caption text-disabled">وقت تعيينه</div>
-                  <div class="text-body-2">{{ formatDateTime(timeOf('assigned')) }}</div>
+                  <div class="text-body-2">{{ formatDateTimeArabic(timeOf('assigned')) }}</div>
                 </div>
 
                 <div class="d-flex flex-wrap gap-2">
@@ -661,7 +661,7 @@ onMounted(load)
               <div class="text-body-1 mb-3">{{ order.cancelled_by_label ?? '—' }}</div>
 
               <div class="text-caption text-disabled">وقت الإلغاء</div>
-              <div class="text-body-1 mb-3">{{ formatDateTime(order.cancelled_at) }}</div>
+              <div class="text-body-1 mb-3">{{ formatDateTimeArabic(order.cancelled_at) }}</div>
 
               <div class="text-caption text-disabled">السبب</div>
               <VAlert type="error" variant="tonal" density="compact" class="mt-1">

@@ -53,6 +53,36 @@ export const formatDateTime = (
   formatting: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' },
 ) => intlFormat(value, formatting)
 
+/** The Arabic day-part, matching the backend App\Support\VisitWindow. */
+const arabicPeriod = (hour: number) =>
+  hour < 12 ? 'صباحاً' : hour < 17 ? 'ظهراً' : hour < 20 ? 'مساءً' : 'ليلاً'
+
+/** Clock the friendly Arabic way, e.g. 3:55 ظهراً — reads like the visit window. */
+export const formatClock = (value: string | null | undefined) => {
+  if (!value)
+    return '—'
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime()))
+    return '—'
+
+  const h = date.getHours()
+
+  return `${h % 12 || 12}:${String(date.getMinutes()).padStart(2, '0')} ${arabicPeriod(h)}`
+}
+
+/** Date then the friendly Arabic clock, e.g. 16/08/2026 · 3:55 ظهراً */
+export const formatDateTimeArabic = (value: string | null | undefined) => {
+  if (!value)
+    return '—'
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime()))
+    return '—'
+
+  return `${formatDate(value)} · ${formatClock(value)}`
+}
+
 export const formatTime = (
   value: string | null | undefined,
   formatting: Intl.DateTimeFormatOptions = { timeStyle: 'short' },
