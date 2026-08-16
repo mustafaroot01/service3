@@ -141,10 +141,13 @@ it('needs a token — a visitor cannot request anyone deleted', function () {
 });
 
 /**
- * Signup opens nothing on its own: the account waits on a code, and the code
- * only opens it — the session still has to be earned on the login screen.
+ * No account exists until the code proves the phone. Registration only holds
+ * the signup and sends the code; verifying it creates the account, already
+ * active, and signs the customer straight in.
  */
-it('holds a new signup at pending until the code arrives, then still asks for a login', function () {
+it('creates no account until the code is verified, then signs in on verify', function () {
+    config(['services.otp.fake' => true]);
+
     $signup = [
         'name' => 'زبون جديد',
         'gender' => 'male',
@@ -161,19 +164,9 @@ it('holds a new signup at pending until the code arrives, then still asks for a 
         ->assertJsonPath('data.phone', '9647766600123')
         ->assertJsonPath('message', 'أرسلنا رمز التحقق إلى واتساب');
 
-    expect($response->json('data'))->not->toHaveKey('token');
-
-    $created = User::where('phone', '9647766600123')->sole();
-
-    expect($created->status)->toBe(UserStatus::PENDING)
-        ->and($created->phone_verified_at)->toBeNull()
-        ->and($created->tokens()->count())->toBe(0);
-
-    app('auth')->forgetGuards();
-
-    $this->postJson('/api/v1/customer/auth/login', [
-        'phone' => '07766600123', 'password' => 'hoame-2026',
-    ])->assertStatus(422)->assertJsonPath('errors.phone.0', 'لم يتم توثيق رقمك بعد، اطلب رمز التحقق');
+    // Nothing was written to the users table — the signup lives only in cache.
+    expect($response->json('data'))->not->toHaveKey('token')
+        ->and(User::where('phone', '9647766600123')->exists())->toBeFalse();
 
     app('auth')->forgetGuards();
 
@@ -181,20 +174,23 @@ it('holds a new signup at pending until the code arrives, then still asks for a 
         'phone' => '07766600123', 'code' => '000000',
     ])->assertStatus(422)->assertJsonPath('errors.otp.0', 'INVALID_CODE');
 
+    expect(User::where('phone', '9647766600123')->exists())->toBeFalse();
+
     app('auth')->forgetGuards();
 
-    $verified = $this->postJson('/api/v1/customer/auth/verify-otp', [
+    $this->postJson('/api/v1/customer/auth/verify-otp', [
         'phone' => '07766600123', 'code' => OtpService::FAKE_CODE,
-    ])->assertOk()->assertJsonPath('message', 'تم توثيق رقمك، سجّل الدخول للمتابعة');
+    ])
+        ->assertCreated()
+        ->assertJsonPath('message', 'تم إنشاء حسابك بنجاح')
+        ->assertJsonStructure(['data' => ['user', 'token', 'token_type']]);
 
-    expect($verified->json('data'))->not->toHaveKey('token');
-
-    $created->refresh();
+    $created = User::where('phone', '9647766600123')->sole();
 
     expect($created->status)->toBe(UserStatus::ACTIVE)
-        ->and($created->phone_verified_at)->not->toBeNull()
-        ->and($created->tokens()->count())->toBe(0);
+        ->and($created->tokens()->count())->toBe(1);
 
+    // And the password stored through the cache still logs in — no double hash.
     app('auth')->forgetGuards();
 
     $this->postJson('/api/v1/customer/auth/login', [
@@ -202,25 +198,42 @@ it('holds a new signup at pending until the code arrives, then still asks for a 
     ])->assertOk()->assertJsonStructure(['data' => ['user', 'token', 'token_type']]);
 });
 
-it('refuses to verify a number that is already verified', function () {
-    $this->postJson('/api/v1/customer/auth/verify-otp', [
-        'phone' => $this->customer->phone, 'code' => OtpService::FAKE_CODE,
-    ])->assertStatus(422)->assertJsonPath('errors.phone.0', 'هذا الرقم موثّق بالفعل، سجّل الدخول');
+it('refuses to register a number that already has an account', function () {
+    $this->postJson('/api/v1/customer/auth/register', [
+        'name' => 'محاولة ثانية',
+        'gender' => 'male',
+        'phone' => $this->customer->phone,
+        'password' => 'hoame-2026',
+        'password_confirmation' => 'hoame-2026',
+        'governorate_id' => $this->governorate->id,
+        'district_id' => $this->district->id,
+        'terms_accepted' => true,
+    ])->assertStatus(422)
+        ->assertJsonPath('errors.phone.0', 'رقم الهاتف مسجّل بالفعل، سجّل الدخول أو استعد كلمة السر');
 });
 
-it('sends a signup code, not a reset code, while the account is still pending', function () {
-    $pending = User::factory()->create(['phone' => '9647766600124']);
-    $pending->forceFill(['status' => UserStatus::PENDING, 'phone_verified_at' => null])->save();
+it('resends a signup code while the signup is still in the cache', function () {
+    config(['services.otp.fake' => true]);
+
+    $this->postJson('/api/v1/customer/auth/register', [
+        'name' => 'زبون جديد',
+        'gender' => 'male',
+        'phone' => '07766600124',
+        'password' => 'hoame-2026',
+        'password_confirmation' => 'hoame-2026',
+        'governorate_id' => $this->governorate->id,
+        'district_id' => $this->district->id,
+        'terms_accepted' => true,
+    ])->assertCreated();
+
+    app('auth')->forgetGuards();
+
+    // Past the 60-second cooldown that the first code opened.
+    $this->travel(61)->seconds();
 
     $this->postJson('/api/v1/customer/auth/resend-otp', ['phone' => '07766600124'])
         ->assertOk()
         ->assertJsonPath('data.purpose', 'register');
-
-    app('auth')->forgetGuards();
-
-    $this->postJson('/api/v1/customer/auth/forgot-password', ['phone' => '07766600124'])
-        ->assertStatus(422)
-        ->assertJsonPath('errors.phone.0', 'لم يتم توثيق رقمك بعد، اطلب رمز التحقق');
 });
 
 it('refuses to send a code to a number that has no account', function () {
@@ -235,8 +248,6 @@ it('refuses to send a code to a number that has no account', function () {
 
 it('sends the customer back to the login screen after a password reset', function () {
     config(['services.otp.fake' => true]);
-
-    $this->customer->forceFill(['phone_verified_at' => now()])->save();
 
     $this->postJson('/api/v1/customer/auth/forgot-password', ['phone' => $this->customer->phone])
         ->assertOk();
@@ -316,37 +327,6 @@ it('forgets the wrong attempts the moment the customer signs in correctly', func
             'phone' => $this->customer->phone, 'password' => 'wrong-one',
         ])->assertStatus(422)->assertJsonPath('errors.phone.0', 'رقم الهاتف أو كلمة السر غير صحيحة');
     }
-});
-
-/**
- * The code proves a phone number, and nothing about it should overrule an
- * admin who closed the account while the customer was still finishing signup.
- */
-it('verifies the phone without reopening an account the admin closed', function () {
-    $held = User::factory()->create(['phone' => '9647755566677']);
-    $held->forceFill(['status' => UserStatus::SUSPENDED, 'phone_verified_at' => null])->save();
-
-    \App\Models\PhoneVerification::create([
-        'phone' => '9647755566677',
-        'message_id' => 'fake',
-        'purpose' => \App\Enums\OtpPurpose::REGISTER,
-        'expires_at' => now()->addMinutes(10),
-    ]);
-
-    $this->postJson('/api/v1/customer/auth/verify-otp', [
-        'phone' => '07755566677', 'code' => OtpService::FAKE_CODE,
-    ])->assertOk();
-
-    $held->refresh();
-
-    expect($held->phone_verified_at)->not->toBeNull()
-        ->and($held->status)->toBe(UserStatus::SUSPENDED);
-
-    app('auth')->forgetGuards();
-
-    $this->postJson('/api/v1/customer/auth/login', [
-        'phone' => '07755566677', 'password' => 'password',
-    ])->assertStatus(422)->assertJsonPath('errors.phone.0', 'حسابك غير مفعّل، راجع الإدارة');
 });
 
 it('refuses to spend a message on an account that could not log in with it', function () {

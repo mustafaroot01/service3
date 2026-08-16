@@ -79,7 +79,6 @@ class DashboardService
         return [
             'users_total' => User::count(),
             'users_active' => User::where('status', UserStatus::ACTIVE)->count(),
-            'users_unverified' => User::whereNull('phone_verified_at')->count(),
             'technicians_total' => Technician::count(),
             'technicians_active' => Technician::where('status', TechnicianStatus::ACTIVE)->count(),
             'technicians_pending' => Technician::where('status', TechnicianStatus::PENDING)->count(),

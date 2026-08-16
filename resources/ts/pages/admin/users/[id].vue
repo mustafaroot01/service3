@@ -11,8 +11,6 @@ interface Customer {
   gender: string | null
   status: string
   status_label: string
-  phone_verified: boolean
-  phone_verified_at: string | null
   terms_accepted_at: string | null
   governorate?: { id: number; name: string }
   district?: { id: number; name: string }
@@ -83,7 +81,6 @@ const statusOptions = [
   { title: 'نشط', value: 'active' },
   { title: 'غير نشط', value: 'inactive' },
   { title: 'موقوف', value: 'suspended' },
-  { title: 'بانتظار التوثيق', value: 'pending' },
   { title: 'مجدول للحذف', value: 'scheduled_for_deletion' },
 ]
 
@@ -115,7 +112,7 @@ const genderLabel = (value: string | null) =>
   value === 'female' ? 'أنثى' : value === 'male' ? 'ذكر' : '—'
 
 const statusColor = (status: string) => ({
-  pending: 'warning', active: 'success', inactive: 'secondary', suspended: 'error',
+  active: 'success', inactive: 'secondary', suspended: 'error',
   scheduled_for_deletion: 'error',
   confirmed: 'info', assigned: 'primary', inspected: 'secondary', completed: 'success', cancelled: 'error',
 }[status] ?? 'secondary')
@@ -131,7 +128,6 @@ const details = computed(() => {
     { icon: 'tabler-gender-bigender', label: 'الجنس', value: genderLabel(record.gender) },
     { icon: 'tabler-map-2', label: 'المحافظة', value: record.governorate?.name ?? '—' },
     { icon: 'tabler-map-pin', label: 'القضاء', value: record.district?.name ?? '—' },
-    { icon: 'tabler-shield-check', label: 'توثيق الهاتف', value: record.phone_verified ? `موثّق ${formatDate(record.phone_verified_at)}` : 'غير موثّق' },
     { icon: 'tabler-file-check', label: 'قبول الشروط', value: formatDate(record.terms_accepted_at) },
     { icon: 'tabler-clipboard-list', label: 'عدد الطلبات', value: String(record.orders_count ?? 0) },
     { icon: 'tabler-calendar-plus', label: 'تاريخ التسجيل', value: formatDate(record.created_at) },
@@ -157,14 +153,6 @@ onMounted(load)
               <h4 class="text-h4 mb-0">{{ customer.name }}</h4>
               <VChip :color="statusColor(customer.status)" size="small" label>
                 {{ customer.status_label }}
-              </VChip>
-              <VChip
-                :color="customer.phone_verified ? 'success' : 'warning'"
-                size="small"
-                variant="tonal"
-                label
-              >
-                {{ customer.phone_verified ? 'هاتف موثّق' : 'هاتف غير موثّق' }}
               </VChip>
             </div>
 

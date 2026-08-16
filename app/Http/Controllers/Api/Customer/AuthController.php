@@ -28,13 +28,12 @@ class AuthController extends Controller
 
     public function verifyOtp(VerifyOtpRequest $request): JsonResponse
     {
-        return ApiResponse::success(
-            $this->auth->verifyRegistration(
-                $request->validated('phone'),
-                $request->validated('code')
-            ),
-            'تم توثيق رقمك، سجّل الدخول للمتابعة'
+        $result = $this->auth->verifyRegistration(
+            $request->validated('phone'),
+            $request->validated('code')
         );
+
+        return $this->authPayload($result, 'تم إنشاء حسابك بنجاح', 201);
     }
 
     public function resendOtp(PhoneRequest $request): JsonResponse

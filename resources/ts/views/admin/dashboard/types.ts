@@ -44,7 +44,6 @@ export interface DashboardSummary {
   people: {
     users_total: number
     users_active: number
-    users_unverified: number
     technicians_total: number
     technicians_active: number
     technicians_pending: number

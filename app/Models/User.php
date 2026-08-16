@@ -32,7 +32,6 @@ class User extends Authenticatable
 
     protected $casts = [
         'status' => UserStatus::class,
-        'phone_verified_at' => 'datetime',
         'deletion_requested_at' => 'datetime',
         'terms_accepted_at' => 'datetime',
         'password' => 'hashed',

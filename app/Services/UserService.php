@@ -35,12 +35,6 @@ class UserService extends BaseCrudService
                 ? $query->whereNotNull('deletion_requested_at')
                 : $query->whereNull('deletion_requested_at');
         }
-
-        if ($request->filled('phone_verified')) {
-            $request->boolean('phone_verified')
-                ? $query->whereNotNull('phone_verified_at')
-                : $query->whereNull('phone_verified_at');
-        }
     }
 
     public function hydrate(Model $model): Model
@@ -68,12 +62,6 @@ class UserService extends BaseCrudService
 
     public function changeStatus(User $user, UserStatus $status): User
     {
-        if ($status === UserStatus::ACTIVE && $user->phone_verified_at === null) {
-            throw ValidationException::withMessages([
-                'status' => 'لا يمكن تفعيل الحساب قبل توثيق رقم الهاتف',
-            ]);
-        }
-
         // The two must move together: leaving the timestamp behind would show
         // a "deletion requested" badge on an account the admin just reopened.
         $user->forceFill([

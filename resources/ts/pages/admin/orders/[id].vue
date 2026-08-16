@@ -25,7 +25,7 @@ interface Order {
   cancelled_at: string | null
   user_id: number
   technician_id: number | null
-  user?: { id: number; name: string; phone: string; phone_verified: boolean }
+  user?: { id: number; name: string; phone: string }
   service?: { id: number; name: string; category?: { id: number; name: string } }
   technician?: { id: number; name: string; phone: string; specializations?: { id: number; name: string }[] } | null
   governorate?: { id: number; name: string }
@@ -535,16 +535,6 @@ onMounted(load)
                   <div class="text-body-2 text-disabled" dir="ltr">{{ order.user?.phone }}</div>
                 </div>
               </div>
-
-              <VChip
-                :color="order.user?.phone_verified ? 'success' : 'warning'"
-                size="small"
-                variant="tonal"
-                label
-                class="mb-4"
-              >
-                {{ order.user?.phone_verified ? 'هاتف موثّق' : 'هاتف غير موثّق' }}
-              </VChip>
 
               <div class="d-flex flex-wrap gap-2">
                 <VBtn

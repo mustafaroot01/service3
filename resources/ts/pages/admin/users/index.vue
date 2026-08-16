@@ -12,7 +12,6 @@ interface User {
   gender: string | null
   status: string
   status_label: string
-  phone_verified: boolean
   governorate?: { id: number; name: string }
   district?: { id: number; name: string }
   orders_count?: number
@@ -27,7 +26,6 @@ const statusOptions = [
   { title: 'نشط', value: 'active' },
   { title: 'غير نشط', value: 'inactive' },
   { title: 'موقوف', value: 'suspended' },
-  { title: 'بانتظار التوثيق', value: 'pending' },
   { title: 'مجدول للحذف', value: 'scheduled_for_deletion' },
 ]
 
@@ -42,13 +40,6 @@ const headers = computed<TableHeader[]>(() => [
     filter: { type: 'select', options: governorates.items.value.map(g => ({ title: g.name, value: g.id })) },
   },
   { title: 'الطلبات', key: 'orders_count', align: 'center', sortable: false },
-  {
-    title: 'التوثيق',
-    key: 'phone_verified',
-    sortable: false,
-    filterKey: 'phone_verified',
-    filter: { type: 'select', options: [{ title: 'موثّق', value: 1 }, { title: 'غير موثّق', value: 0 }] },
-  },
   {
     title: 'الحالة',
     key: 'status',
@@ -68,7 +59,7 @@ const headers = computed<TableHeader[]>(() => [
 const table = useServerTable<User>('/admin/users', {
   defaultSort: 'created_at',
   defaultOrder: 'desc',
-  filters: { status: null, governorate_id: null, phone_verified: null, deletion_requested: null },
+  filters: { status: null, governorate_id: null, deletion_requested: null },
 })
 
 const { busyRow, run } = useRowAction(() => table.refresh())
@@ -83,7 +74,7 @@ const genderLabel = (value: string | null) =>
   value === 'female' ? 'أنثى' : value === 'male' ? 'ذكر' : '—'
 
 const statusColor = (status: string) => ({
-  pending: 'warning', active: 'success', inactive: 'secondary', suspended: 'error',
+  active: 'success', inactive: 'secondary', suspended: 'error',
   scheduled_for_deletion: 'error',
 }[status] ?? 'secondary')
 </script>
@@ -116,14 +107,6 @@ const statusColor = (status: string) => ({
 
     <template #item.orders_count="{ item }">
       <VChip size="small" label color="info">{{ item.orders_count ?? 0 }}</VChip>
-    </template>
-
-    <template #item.phone_verified="{ item }">
-      <VIcon
-        :icon="item.phone_verified ? 'tabler-circle-check' : 'tabler-circle-x'"
-        :color="item.phone_verified ? 'success' : 'disabled'"
-        size="20"
-      />
     </template>
 
     <template #item.deletion_requested="{ item }">

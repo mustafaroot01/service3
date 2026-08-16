@@ -19,16 +19,18 @@ class UserFactory extends Factory
             'gender' => fake()->randomElement(['male', 'female']),
             'phone' => '9647'.fake()->unique()->numerify('#########'),
             'password' => 'password',
+            'status' => UserStatus::ACTIVE,
             'terms_accepted_at' => now(),
             'remember_token' => Str::random(10),
         ];
     }
 
+    /**
+     * Kept for the many call sites that read as "a real, usable account". Every
+     * account is verified the moment it exists now, so this only affirms it.
+     */
     public function verified(): static
     {
-        return $this->afterCreating(fn (User $user) => $user->forceFill([
-            'phone_verified_at' => now(),
-            'status' => UserStatus::ACTIVE,
-        ])->save());
+        return $this->state(['status' => UserStatus::ACTIVE]);
     }
 }
