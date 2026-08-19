@@ -150,9 +150,15 @@ it('writes nothing at all when a guard rejects the swap', function () use ($swap
         ->and(Notification::count())->toBe(0);
 });
 
-it('drops a queued notification whose order no longer exists instead of failing it', function () {
-    expect((new App\Listeners\SendOrderStatusNotification(app(App\Services\NotificationService::class)))->deleteWhenMissingModels)
-        ->toBeTrue()
-        ->and((new App\Listeners\SendTechnicianReassignedNotification(app(App\Services\NotificationService::class)))->deleteWhenMissingModels)
-        ->toBeTrue();
+it('completes the swap even when the push transport fails, keeping the in-app rows', function () use ($swap) {
+    // Notifications run inside the request now; a dead OneSignal must not break
+    // the reassignment, and the in-app record must survive the push failure.
+    $this->mock(App\Services\PushService::class, function ($mock) {
+        $mock->shouldReceive('send')->andThrow(new RuntimeException('OneSignal unreachable'));
+    });
+
+    $swap($this, $this->second->id)->assertOk();
+
+    expect($this->order->fresh()->technician_id)->toBe($this->second->id)
+        ->and(Notification::where('type', 'technician_reassigned')->count())->toBe(3);
 });

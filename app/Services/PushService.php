@@ -99,10 +99,12 @@ class PushService
     private function request(array $payload): ?Response
     {
         try {
+            // Short on purpose: this now runs inside the request, so a stalled
+            // OneSignal must not hold an admin's action open for long.
             return Http::withToken($this->settings->get(SettingKey::ONESIGNAL_REST_API_KEY))
                 ->acceptJson()
-                ->timeout(15)
-                ->connectTimeout(8)
+                ->timeout(8)
+                ->connectTimeout(4)
                 ->post(config('services.onesignal.endpoint'), $payload);
         } catch (\Throwable $e) {
             Log::warning('Push transport failed', ['message' => $e->getMessage()]);

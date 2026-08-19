@@ -110,6 +110,16 @@ it('reaches every customer once, in app and by push', function () {
         ->and($rows->first()->data['blog_post_id'])->toBe($post->id);
 });
 
-it('drops the job rather than failing it when the post is gone', function () {
-    expect((new AnnounceBlogPost(app(PushService::class)))->deleteWhenMissingModels)->toBeTrue();
+it('writes the in-app rows even when the push transport fails', function () {
+    User::factory()->verified()->count(3)->create();
+    $post = BlogPost::create(($this->payload)());
+
+    // Push runs inside the request now; a dead OneSignal must not lose the
+    // in-app announcement, which is written before the push mirror.
+    $push = Mockery::mock(PushService::class);
+    $push->shouldReceive('broadcast')->andThrow(new RuntimeException('OneSignal unreachable'));
+
+    (new AnnounceBlogPost($push))->handle(new BlogPostPublished($post));
+
+    expect(Notification::where('type', NotificationType::BLOG_POST)->count())->toBe(User::count());
 });

@@ -7,24 +7,15 @@ use App\Enums\OrderStatus;
 use App\Events\OrderStatusChanged;
 use App\Services\NotificationService;
 use App\Support\OrderNotificationContent;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 
-class SendOrderStatusNotification implements ShouldQueue
+/**
+ * Runs synchronously (no ShouldQueue): the host has no queue worker, so a
+ * queued notification would sit in the jobs table forever. NotificationService
+ * swallows its own failures, so a push hiccup never breaks the status change
+ * that triggered it.
+ */
+class SendOrderStatusNotification
 {
-    use InteractsWithQueue;
-
-    /**
-     * The order or technician this notification is about may be gone by the
-     * time the worker picks the job up. There is nothing left to announce, so
-     * the job is dropped instead of failing three times and being kept forever.
-     */
-    public bool $deleteWhenMissingModels = true;
-
-    public int $tries = 3;
-
-    public array $backoff = [10, 60];
-
     public function __construct(private readonly NotificationService $notifications) {}
 
     public function handle(OrderStatusChanged $event): void
