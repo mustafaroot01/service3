@@ -48,9 +48,12 @@ declare global {
   const effectScope: typeof import('vue')['effectScope']
   const emailValidator: typeof import('./resources/ts/@core/utils/validators')['emailValidator']
   const extendRef: typeof import('@vueuse/core')['extendRef']
+  const formatClock: typeof import('./resources/ts/@core/utils/formatters')['formatClock']
   const formatDate: typeof import('./resources/ts/@core/utils/formatters')['formatDate']
   const formatDateTime: typeof import('./resources/ts/@core/utils/formatters')['formatDateTime']
+  const formatDateTimeArabic: typeof import('./resources/ts/@core/utils/formatters')['formatDateTimeArabic']
   const formatDateToMonthShort: typeof import('./resources/ts/@core/utils/formatters')['formatDateToMonthShort']
+  const formatPhoneLocal: typeof import('./resources/ts/@core/utils/formatters')['formatPhoneLocal']
   const formatTime: typeof import('./resources/ts/@core/utils/formatters')['formatTime']
   const getActivePinia: typeof import('pinia')['getActivePinia']
   const getCurrentInstance: typeof import('vue')['getCurrentInstance']
@@ -416,9 +419,12 @@ declare module 'vue' {
     readonly effectScope: UnwrapRef<typeof import('vue')['effectScope']>
     readonly emailValidator: UnwrapRef<typeof import('./resources/ts/@core/utils/validators')['emailValidator']>
     readonly extendRef: UnwrapRef<typeof import('@vueuse/core')['extendRef']>
+    readonly formatClock: UnwrapRef<typeof import('./resources/ts/@core/utils/formatters')['formatClock']>
     readonly formatDate: UnwrapRef<typeof import('./resources/ts/@core/utils/formatters')['formatDate']>
     readonly formatDateTime: UnwrapRef<typeof import('./resources/ts/@core/utils/formatters')['formatDateTime']>
+    readonly formatDateTimeArabic: UnwrapRef<typeof import('./resources/ts/@core/utils/formatters')['formatDateTimeArabic']>
     readonly formatDateToMonthShort: UnwrapRef<typeof import('./resources/ts/@core/utils/formatters')['formatDateToMonthShort']>
+    readonly formatPhoneLocal: UnwrapRef<typeof import('./resources/ts/@core/utils/formatters')['formatPhoneLocal']>
     readonly formatTime: UnwrapRef<typeof import('./resources/ts/@core/utils/formatters')['formatTime']>
     readonly getActivePinia: UnwrapRef<typeof import('pinia')['getActivePinia']>
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
