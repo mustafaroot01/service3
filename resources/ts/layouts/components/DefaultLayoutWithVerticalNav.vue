@@ -4,7 +4,6 @@ import { themeConfig } from '@themeConfig'
 
 // Components
 import Footer from '@/layouts/components/Footer.vue'
-import NavBarNotifications from '@/layouts/components/NavBarNotifications.vue'
 import NavbarThemeSwitcher from '@/layouts/components/NavbarThemeSwitcher.vue'
 import UserProfile from '@/layouts/components/UserProfile.vue'
 
@@ -31,7 +30,6 @@ import { VerticalNavLayout } from '@layouts'
 
         <VSpacer />
         <NavbarThemeSwitcher />
-        <NavBarNotifications class="me-1" />
         <UserProfile />
       </div>
     </template>
