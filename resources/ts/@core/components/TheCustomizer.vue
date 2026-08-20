@@ -65,17 +65,17 @@ const themeMode = computed(() => {
     {
       bgImage: 'tabler-sun',
       value: Theme.Light,
-      label: 'Light',
+      label: 'فاتح',
     },
     {
       bgImage: 'tabler-moon-stars',
       value: Theme.Dark,
-      label: 'Dark',
+      label: 'داكن',
     },
     {
       bgImage: 'tabler-device-desktop-analytics',
       value: Theme.System,
-      label: 'System',
+      label: 'النظام',
     },
   ]
 })
@@ -86,12 +86,12 @@ const themeSkin = computed(() => {
     {
       bgImage: defaultSkin,
       value: Skins.Default,
-      label: 'Default',
+      label: 'افتراضي',
     },
     {
       bgImage: borderSkin,
       value: Skins.Bordered,
-      label: 'Bordered',
+      label: 'بإطار',
     },
   ]
 })
@@ -104,17 +104,17 @@ const layouts = computed(() => {
     {
       bgImage: defaultSkin,
       value: Layout.Vertical,
-      label: 'Vertical',
+      label: 'عمودي',
     },
     {
       bgImage: collapsed,
       value: Layout.Collapsed,
-      label: 'Collapsed',
+      label: 'مطوي',
     },
     {
       bgImage: horizontalLight,
       value: Layout.Horizontal,
-      label: 'Horizontal',
+      label: 'أفقي',
     },
   ]
 })
@@ -146,12 +146,12 @@ const contentWidth = computed(() => {
     {
       bgImage: compact,
       value: ContentWidth.Boxed,
-      label: 'Compact',
+      label: 'مضغوط',
     },
     {
       bgImage: wideSvg,
       value: ContentWidth.Fluid,
-      label: 'Wide',
+      label: 'واسع',
     },
   ]
 })
@@ -164,12 +164,12 @@ const direction = computed(() => {
     {
       bgImage: ltrSvg,
       value: Direction.Ltr,
-      label: 'Left to right',
+      label: 'من اليسار لليمين',
     },
     {
       bgImage: rtlSvg,
       value: Direction.Rtl,
-      label: 'Right to left',
+      label: 'من اليمين لليسار',
     },
   ]
 })
@@ -290,10 +290,10 @@ const resetCustomizer = async () => {
       <div class="customizer-heading d-flex align-center justify-space-between">
         <div>
           <h6 class="text-h6">
-            Theme Customizer
+            مخصّص القالب
           </h6>
           <p class="text-body-2 mb-0">
-            Customize & Preview in Real Time
+            خصّص القالب وعايِن التغييرات مباشرةً
           </p>
         </div>
 
@@ -344,13 +344,13 @@ const resetCustomizer = async () => {
       >
         <!-- SECTION Theming -->
         <CustomizerSection
-          title="Theming"
+          title="المظهر"
           :divider="false"
         >
           <!-- 👉 Primary Color -->
           <div class="d-flex flex-column gap-2">
             <h6 class="text-h6">
-              Primary Color
+              اللون الأساسي
             </h6>
 
             <div
@@ -422,7 +422,7 @@ const resetCustomizer = async () => {
           <!-- 👉 Theme -->
           <div class="d-flex flex-column gap-2">
             <h6 class="text-h6">
-              Theme
+              الوضع
             </h6>
 
             <CustomRadiosWithImage
@@ -454,7 +454,7 @@ const resetCustomizer = async () => {
           <!-- 👉 Skin -->
           <div class="d-flex flex-column gap-2">
             <h6 class="text-h6">
-              Skins
+              الشكل
             </h6>
 
             <CustomRadiosWithImage
@@ -478,7 +478,7 @@ const resetCustomizer = async () => {
               for="customizer-semi-dark"
               class="text-h6 text-high-emphasis"
             >
-              Semi Dark Menu
+              قائمة شبه داكنة
             </VLabel>
 
             <div>
@@ -493,11 +493,11 @@ const resetCustomizer = async () => {
         <!-- !SECTION -->
 
         <!-- SECTION LAYOUT -->
-        <CustomizerSection title="Layout">
+        <CustomizerSection title="التخطيط">
           <!-- 👉 Layouts -->
           <div class="d-flex flex-column gap-2">
             <h6 class="text-base font-weight-medium">
-              Layout
+              التخطيط
             </h6>
 
             <CustomRadiosWithImage
@@ -515,7 +515,7 @@ const resetCustomizer = async () => {
           <!-- 👉 Content Width -->
           <div class="d-flex flex-column gap-2">
             <h6 class="text-base font-weight-medium">
-              Content
+              عرض المحتوى
             </h6>
 
             <CustomRadiosWithImage
@@ -536,7 +536,7 @@ const resetCustomizer = async () => {
             class="d-flex flex-column gap-2"
           >
             <h6 class="text-base font-weight-medium">
-              Direction
+              الاتجاه
             </h6>
 
             <CustomRadiosWithImage
