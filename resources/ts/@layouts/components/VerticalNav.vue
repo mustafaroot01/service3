@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import type { Component } from 'vue'
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
-import { VNodeRenderer } from './VNodeRenderer'
 import { layoutConfig } from '@layouts'
 import { VerticalNavGroup, VerticalNavLink, VerticalNavSectionTitle } from '@layouts/components'
 import { useLayoutConfigStore } from '@layouts/stores/config'
@@ -52,8 +51,6 @@ const updateIsVerticalNavScrolled = (val: boolean) => isVerticalNavScrolled.valu
 const handleNavScroll = (evt: Event) => {
   isVerticalNavScrolled.value = (evt.target as HTMLElement).scrollTop > 0
 }
-
-const hideTitleAndIcon = configStore.isVerticalNavMini(isHovered)
 </script>
 
 <template>
@@ -74,21 +71,6 @@ const hideTitleAndIcon = configStore.isVerticalNavMini(isHovered)
     <!-- 👉 Header -->
     <div class="nav-header">
       <slot name="nav-header">
-        <RouterLink
-          to="/"
-          class="app-logo app-title-wrapper"
-        >
-          <VNodeRenderer :nodes="layoutConfig.app.logo" />
-
-          <Transition name="vertical-nav-app-title">
-            <h1
-              v-show="!hideTitleAndIcon"
-              class="app-logo-title"
-            >
-              {{ layoutConfig.app.title }}
-            </h1>
-          </Transition>
-        </RouterLink>
         <!-- 👉 Vertical nav actions -->
         <!-- Show toggle collapsible in >md and close button in <md -->
         <div class="header-action">
@@ -143,22 +125,6 @@ const hideTitleAndIcon = configStore.isVerticalNavMini(isHovered)
   </Component>
 </template>
 
-<style lang="scss" scoped>
-.app-logo {
-  display: flex;
-  align-items: center;
-  column-gap: 0.75rem;
-
-  .app-logo-title {
-    font-size: 1.375rem;
-    font-weight: 700;
-    letter-spacing: 0.25px;
-    line-height: 1.5rem;
-    text-transform: capitalize;
-  }
-}
-</style>
-
 <style lang="scss">
 @use "@configured-variables" as variables;
 @use "@layouts/styles/mixins";
@@ -183,6 +149,10 @@ const hideTitleAndIcon = configStore.isVerticalNavMini(isHovered)
     .header-action {
       cursor: pointer;
 
+      // Logo removed from the header, so push the collapse/close control to the
+      // far end where it used to sit.
+      margin-inline-start: auto;
+
       @at-root {
         #{variables.$selector-vertical-nav-mini} .nav-header .header-action {
           &.nav-pin,
@@ -192,10 +162,6 @@ const hideTitleAndIcon = configStore.isVerticalNavMini(isHovered)
         }
       }
     }
-  }
-
-  .app-title-wrapper {
-    margin-inline-end: auto;
   }
 
   .nav-items {
