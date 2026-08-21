@@ -23,6 +23,7 @@ class UpdateServiceRequest extends FormRequest
                     ->ignore($this->route('service')),
             ],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'remove_image' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string', 'max:5000'],
             'is_active' => ['sometimes', 'boolean'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],

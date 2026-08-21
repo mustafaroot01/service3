@@ -31,4 +31,20 @@ class ServiceService extends BaseCrudService
     {
         return $model->load('category')->loadCount('orders');
     }
+
+    /**
+     * Orders are permanent records that must keep pointing at a real service, so
+     * a service with orders is retired by deactivating it, never deleted. Without
+     * this the RESTRICT foreign key would surface as a raw 500.
+     */
+    public function delete(Model $model): void
+    {
+        $orders = $model->orders()->count();
+
+        if ($orders > 0) {
+            abort(422, "لا يمكن حذف خدمة مرتبطة بـ{$orders} طلب. عطّلها بدل الحذف.");
+        }
+
+        parent::delete($model);
+    }
 }

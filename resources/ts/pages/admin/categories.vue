@@ -37,7 +37,7 @@ const table = useServerTable<Category>('/admin/categories', {
 const drawer = useResourceForm({
   endpoint: '/admin/categories',
   multipart: true,
-  blank: () => ({ name: '', image: null as File | null, sort_order: 0, is_active: true }),
+  blank: () => ({ name: '', image: null as File | null, remove_image: false, sort_order: 0, is_active: true }),
   onSaved: () => table.refresh(),
 })
 
@@ -161,6 +161,7 @@ const remove = async () => {
         label="صورة القسم"
         :error-message="drawer.fieldError('image')"
         class="mb-4"
+        @remove="currentImage = null; drawer.form.value.remove_image = true"
       />
 
       <AppTextField
@@ -177,7 +178,10 @@ const remove = async () => {
 
     <VDialog :model-value="confirmDelete !== null" max-width="420" @update:model-value="confirmDelete = null">
       <VCard title="تأكيد الحذف">
-        <VCardText>سيتم حذف «{{ confirmDelete?.name }}» وكل خدماته. هل أنت متأكد؟</VCardText>
+        <VCardText>
+          سيُحذف القسم «{{ confirmDelete?.name }}» وكل خدماته نهائياً.
+          القسم المرتبط بطلبات لا يمكن حذفه — عطّله بدل ذلك. هل أنت متأكد؟
+        </VCardText>
         <VCardActions class="px-6 pb-4">
           <VSpacer />
           <VBtn color="secondary" variant="tonal" @click="confirmDelete = null">إلغاء</VBtn>

@@ -31,4 +31,18 @@ class CategoryService extends BaseCrudService
     {
         return $model->loadCount('services');
     }
+
+    /**
+     * Deleting a category cascades to its services, which would trip the orders
+     * RESTRICT and 500. A category any of whose services has orders is retired by
+     * deactivating it, never deleted.
+     */
+    public function delete(Model $model): void
+    {
+        if ($model->services()->whereHas('orders')->exists()) {
+            abort(422, 'لا يمكن حذف قسم مرتبط بطلبات على خدماته. عطّله بدل الحذف.');
+        }
+
+        parent::delete($model);
+    }
 }

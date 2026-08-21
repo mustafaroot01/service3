@@ -50,7 +50,7 @@ const drawer = useResourceForm({
   endpoint: '/admin/services',
   multipart: true,
   blank: () => ({
-    name: '', category_id: null as number | null, image: null as File | null,
+    name: '', category_id: null as number | null, image: null as File | null, remove_image: false,
     description: '', sort_order: 0, is_active: true,
   }),
   onSaved: () => table.refresh(),
@@ -173,6 +173,7 @@ const remove = async () => {
         label="صورة الخدمة"
         :error-message="drawer.fieldError('image')"
         class="mb-4"
+        @remove="currentImage = null; drawer.form.value.remove_image = true"
       />
 
       <AppTextarea
@@ -197,7 +198,10 @@ const remove = async () => {
 
     <VDialog :model-value="confirmDelete !== null" max-width="420" @update:model-value="confirmDelete = null">
       <VCard title="تأكيد الحذف">
-        <VCardText>سيتم حذف «{{ confirmDelete?.name }}». هل أنت متأكد؟</VCardText>
+        <VCardText>
+          سيُحذف «{{ confirmDelete?.name }}» نهائياً.
+          الخدمة المرتبطة بطلبات لا يمكن حذفها — عطّلها بدل ذلك. هل أنت متأكد؟
+        </VCardText>
         <VCardActions class="px-6 pb-4">
           <VSpacer />
           <VBtn color="secondary" variant="tonal" @click="confirmDelete = null">إلغاء</VBtn>

@@ -37,12 +37,20 @@ const table = useServerTable<Post>('/admin/blog', {
   filters: { is_active: null },
 })
 
+// Local «Y-m-d H:i» — toISOString() is UTC and would shift the moment (and the
+// day, near midnight) three hours back, storing publish time as the wrong hour.
+const pad = (n: number) => String(n).padStart(2, '0')
+const toLocalDateTime = (d: Date) =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+const localNow = () => toLocalDateTime(new Date())
+const toLocalInput = (iso: string | null) => (iso ? toLocalDateTime(new Date(iso)) : '')
+
 const drawer = useResourceForm({
   endpoint: '/admin/blog',
   multipart: true,
   blank: () => ({
     title: '', image: null as File | null, content: '',
-    published_at: new Date().toISOString().slice(0, 10), is_active: true,
+    published_at: localNow(), is_active: true,
   }),
   onSaved: () => table.refresh(),
 })
@@ -54,7 +62,7 @@ const confirmDelete = ref<Post | null>(null)
 const openCreate = () => { drawer.openCreate(); currentImage.value = null }
 
 const openEdit = (row: Post) => {
-  drawer.openEdit({ ...row, image: null, published_at: row.published_at?.slice(0, 10) ?? '' } as any)
+  drawer.openEdit({ ...row, image: null, published_at: toLocalInput(row.published_at) } as any)
   currentImage.value = row.image
 }
 
@@ -96,7 +104,7 @@ const publishedOn = (value: string | null) => formatDate(value, { dateStyle: 'lo
         </div>
       </template>
 
-      <template #item.published_at="{ item }">{{ formatDate(item.published_at) }}</template>
+      <template #item.published_at="{ item }">{{ formatDateTime(item.published_at) }}</template>
 
       <template #item.is_active="{ item }">
         <VChip :color="item.is_active ? 'success' : 'secondary'" size="small" label>
@@ -190,8 +198,8 @@ const publishedOn = (value: string | null) => formatDate(value, { dateStyle: 'lo
 
       <AppDateTimePicker
         v-model="drawer.form.value.published_at"
-        label="تاريخ النشر"
-        :config="{ dateFormat: 'Y-m-d' }"
+        label="تاريخ ووقت النشر"
+        :config="{ enableTime: true, dateFormat: 'Y-m-d H:i' }"
         :error-messages="drawer.fieldError('published_at')"
         class="mb-4"
       />

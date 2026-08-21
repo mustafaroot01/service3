@@ -92,11 +92,16 @@ abstract class BaseCrudService extends BaseService
 
     public function delete(Model $model): void
     {
-        foreach ($this->imageFields as $field) {
-            $this->deleteImage($model->{$field});
-        }
+        $images = array_map(fn (string $field) => $model->{$field}, $this->imageFields);
 
         $model->delete();
+
+        // Only after the row is really gone. A restricted delete (a service with
+        // orders, a referenced governorate) must not strip the image first and
+        // leave the record alive but imageless.
+        foreach ($images as $image) {
+            $this->deleteImage($image);
+        }
     }
 
     public function toggle(Model $model, string $column = 'is_active'): Model
@@ -135,21 +140,32 @@ abstract class BaseCrudService extends BaseService
     protected function storeImages(array $data, ?Model $existing = null): array
     {
         foreach ($this->imageFields as $field) {
-            if (! isset($data[$field])) {
+            // A companion `remove_<field>` flag lets an edit clear the image
+            // outright, not just replace it — otherwise a non-file value is
+            // ignored and the old image silently stays.
+            $remove = filter_var($data['remove_'.$field] ?? false, FILTER_VALIDATE_BOOLEAN);
+            unset($data['remove_'.$field]);
+
+            $incoming = $data[$field] ?? null;
+
+            if ($incoming instanceof UploadedFile) {
+                if ($existing) {
+                    $this->deleteImage($existing->{$field});
+                }
+
+                $data[$field] = $incoming->store($this->imageDirectory, 'public');
+
                 continue;
             }
 
-            if (! $data[$field] instanceof UploadedFile) {
-                unset($data[$field]);
+            // No new file: keep the existing image by default.
+            unset($data[$field]);
 
-                continue;
-            }
-
-            if ($existing) {
+            // Explicit removal (edit only): drop the file and clear the column.
+            if ($remove && $existing) {
                 $this->deleteImage($existing->{$field});
+                $data[$field] = null;
             }
-
-            $data[$field] = $data[$field]->store($this->imageDirectory, 'public');
         }
 
         return $data;
