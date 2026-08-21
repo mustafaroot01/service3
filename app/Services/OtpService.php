@@ -19,13 +19,15 @@ class OtpService
 
     public const RESEND_COOLDOWN_SECONDS = 60;
 
-    private const TTL_MINUTES = 10;
+    private const TTL_MINUTES = 3;
 
     public function __construct(private readonly SettingService $settings) {}
 
     public function send(string $phone, OtpPurpose $purpose): PhoneVerification
     {
         $phone = Phone::international($phone) ?? throw new OtpException('INVALID_PHONE');
+
+        $this->pruneExpired();
 
         $this->guardCooldown($phone, $purpose);
 
@@ -93,6 +95,17 @@ class OtpService
     public function isFake(): bool
     {
         return ! app()->isProduction() && config('services.otp.fake') === true;
+    }
+
+    /**
+     * Self-cleaning: every send drops rows already past their expiry, so the
+     * table never grows without bound — the host has no scheduler to prune it.
+     * Only expired rows go; a still-valid code the customer is about to enter is
+     * never touched.
+     */
+    private function pruneExpired(): void
+    {
+        PhoneVerification::where('expires_at', '<', now())->delete();
     }
 
     private function guardCooldown(string $phone, OtpPurpose $purpose): void
