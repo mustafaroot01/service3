@@ -51,6 +51,8 @@ Route::prefix('customer')->name('customer.')->group(function () {
     Route::get('categories/{category}/services', [CategoryController::class, 'services'])->name('categories.services');
 
     Route::get('services', [ServiceController::class, 'index'])->name('services.index');
+    // Before the {service} route so "suggest" is not taken as a model key.
+    Route::get('services/suggest', [ServiceController::class, 'suggest'])->name('services.suggest');
     Route::get('services/{service}', [ServiceController::class, 'show'])->name('services.show');
 
     Route::get('sliders', [SliderController::class, 'index'])->name('sliders.index');
