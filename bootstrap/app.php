@@ -9,6 +9,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Middleware\PermissionMiddleware;
@@ -55,6 +56,15 @@ return Application::configure(basePath: dirname(__DIR__))
                     'هذه العملية نُفّذت مسبقاً، لا داعي لتكرارها',
                     [],
                     409
+                ),
+                // Raised before any controller runs when the whole request exceeds
+                // PHP's post_max_size — a four-image gallery can. Name the cap so
+                // the admin knows what to shrink instead of reading a raw English
+                // framework message.
+                $e instanceof PostTooLargeException => ApiResponse::error(
+                    'حجم الملفات المرفوعة كبير جداً — الحد الأقصى للطلب الواحد '.ini_get('post_max_size').'. قلّل حجم الصور أو ارفعها على دفعات.',
+                    [],
+                    413
                 ),
                 $e instanceof AuthenticationException => ApiResponse::unauthorized(),
                 $e instanceof AuthorizationException => ApiResponse::forbidden(),
