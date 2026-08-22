@@ -64,6 +64,13 @@ Route::prefix('admin')->name('admin.')->group(function () use ($crud) {
         $crud('districts', DistrictController::class, 'district');
         $crud('categories', CategoryController::class, 'category');
         $crud('services', ServiceController::class, 'service');
+        // Gallery: one call per image so the form reflects each action at once.
+        Route::post('services/{service}/images', [ServiceController::class, 'storeImages'])
+            ->middleware('permission:services.update,admin')->name('services.images.store');
+        Route::post('services/{service}/images/{image}', [ServiceController::class, 'replaceImage'])
+            ->middleware('permission:services.update,admin')->name('services.images.replace');
+        Route::delete('services/{service}/images/{image}', [ServiceController::class, 'destroyImage'])
+            ->middleware('permission:services.update,admin')->name('services.images.destroy');
         $crud('sliders', SliderController::class, 'slider');
         $crud('specializations', SpecializationController::class, 'specialization', ['reorder']);
         $crud('blog', BlogPostController::class, 'blog', ['reorder']);

@@ -4,7 +4,7 @@ namespace App\Http\Resources\Api\Admin;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
+use App\Support\Media;
 
 class ServiceResource extends JsonResource
 {
@@ -15,7 +15,12 @@ class ServiceResource extends JsonResource
             'category_id' => $this->category_id,
             'category' => new CategoryResource($this->whenLoaded('category')),
             'name' => $this->name,
-            'image' => $this->image ? Storage::disk('public')->url($this->image) : null,
+            'image' => Media::url($this->image),
+            'images' => $this->images->map(fn ($img) => [
+                'id' => $img->id,
+                'url' => Media::url($img->path),
+                'sort' => $img->sort,
+            ])->values()->all(),
             'description' => $this->description,
             'is_active' => (bool) $this->is_active,
             'sort_order' => (int) $this->sort_order,

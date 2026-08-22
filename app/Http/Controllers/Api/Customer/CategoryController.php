@@ -33,6 +33,7 @@ class CategoryController extends Controller
         }
 
         $services = Service::visible()
+            ->with('images')
             ->where('category_id', $category->id)
             ->orderBy('sort_order')
             ->orderBy('name')

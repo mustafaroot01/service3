@@ -151,6 +151,7 @@ Authorization: Bearer <token>
       "category_id": 3,
       "name": "صيانة كهرباء",
       "image": null,
+      "images": [],
       "description": null
     },
     {
@@ -158,6 +159,7 @@ Authorization: Bearer <token>
       "category_id": 3,
       "name": "تركيب كهرباء",
       "image": null,
+      "images": [],
       "description": null
     }
   ]
@@ -184,7 +186,11 @@ Authorization: Bearer <token>
         "image": "http://127.0.0.1:8000/storage/categories/jYKFxRUglrcbXyCVZ3XUZLzeuHotjST5IaH7K6iM.jpg"
       },
       "name": "صيانة تكييف وتبريد",
-      "image": "http://127.0.0.1:8000/storage/services/8lmYlS3bp0f2ghc9nzbyydTD4VGGSzFqzqgE864y.jpg",
+      "image": "https://servix.diyala.org/storage/services/8lmYlS3bp0f2ghc9nzbyydTD4VGGSzFqzqgE864y.jpg",
+      "images": [
+        { "id": 1, "url": "https://servix.diyala.org/storage/services/8lmYlS3bp0f2ghc9nzbyydTD4VGGSzFqzqgE864y.jpg" },
+        { "id": 2, "url": "https://servix.diyala.org/storage/services/Qm3vN8kLp2RtYx7Wc4Zb9Hd1Fj6Gs5Aa0Ee8Ii2.jpg" }
+      ],
       "description": "تهعلاثقلثقل"
     },
     {
@@ -195,6 +201,14 @@ Authorization: Bearer <token>
         "name": "تنظيف",
   … 
 ```
+
+**صور الخدمة (معرض):**
+| الحقل | الوصف |
+|---|---|
+| `image` | **الغلاف** — أول صورة بالمعرض، أو `null` لو الخدمة بلا صور. استعمله بالقوائم والبطاقات. |
+| `images` | **المعرض كاملاً** (٠–٤ صور) مرتّباً؛ كل عنصر `{ id, url }`. استعمله بشاشة التفاصيل كسلايدر/معرض. الأول فيه = `image`. |
+
+> قد تكون `images` فارغة `[]` و`image` = `null` — اعرض بديلاً (placeholder) حينها.
 
 ### `GET /customer/services/suggest` — بحث/اقتراحات فورية
 النقطة المخصّصة لصندوق البحث بالتطبيق: الزبون يكتب أحرفاً فتطلع له خدمات مقترحة خفيفة ومرتّبة بالأهمية. **عامّة (بلا توكن).**
@@ -254,7 +268,7 @@ Authorization: Bearer <token>
 - لعرض «كل النتائج» بصفحة كاملة (مع صفحات ووصف) استعمل `GET /customer/services?q=...`.
 
 ### `GET /customer/services/{id}`
-تفاصيل خدمة واحدة — نفس شكل العنصر أعلاه.
+تفاصيل خدمة واحدة — نفس شكل العنصر أعلاه (مع `images` كاملة للمعرض).
 
 ### `GET /customer/governorates`
 المحافظات المفعّلة.

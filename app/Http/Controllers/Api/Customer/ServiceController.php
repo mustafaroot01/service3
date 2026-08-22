@@ -17,7 +17,7 @@ class ServiceController extends Controller
     public function index(Request $request): JsonResponse
     {
         $services = Service::visible()
-            ->with('category')
+            ->with(['category', 'images'])
             ->when($request->filled('category_id'), fn (Builder $q) => $q->where('category_id', $request->input('category_id')))
             ->when($request->filled('q'), fn (Builder $q) => $q->search((string) $request->input('q'), withDescription: true))
             ->orderBy('sort_order')
@@ -45,7 +45,7 @@ class ServiceController extends Controller
 
         $services = Service::visible()
             ->search($term)
-            ->with('category')
+            ->with(['category', 'images'])
             ->orderBy('sort_order')
             ->orderBy('name')
             ->limit($limit)
@@ -64,7 +64,7 @@ class ServiceController extends Controller
         }
 
         return ApiResponse::success(
-            new ServiceResource($service->load('category')),
+            new ServiceResource($service->load(['category', 'images'])),
             'Service retrieved successfully'
         );
     }

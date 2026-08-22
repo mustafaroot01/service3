@@ -1,17 +1,25 @@
 <script setup lang="ts">
 import AppFormDrawer from '@/components/form/AppFormDrawer.vue'
-import AppImageUpload from '@/components/form/AppImageUpload.vue'
+import AppImageSlot from '@/components/form/AppImageSlot.vue'
 import AppDataTableServer from '@/components/table/AppDataTableServer.vue'
 import { useLookup } from '@/composables/useLookups'
 import { useResourceForm } from '@/composables/useResourceForm'
 import { useRowAction } from '@/composables/useRowAction'
 import { useServerTable } from '@/composables/useServerTable'
+import { useToast } from '@/composables/useToast'
 import type { TableHeader } from '@/types/api'
+
+interface ServiceImage {
+  id: number
+  url: string
+  sort: number
+}
 
 interface Service {
   id: number
   name: string
   image: string | null
+  images: ServiceImage[]
   description: string | null
   category_id: number
   category?: { id: number; name: string }
@@ -20,7 +28,12 @@ interface Service {
   orders_count?: number
 }
 
+type Envelope<T> = { message?: string; data: T }
+
+const MAX_IMAGES = 4
+
 const categories = useLookup('/admin/categories')
+const toast = useToast()
 
 const headers = computed<TableHeader[]>(() => [
   { title: 'الصورة', key: 'image', sortable: false, align: 'center', width: 80 },
@@ -50,19 +63,137 @@ const drawer = useResourceForm({
   endpoint: '/admin/services',
   multipart: true,
   blank: () => ({
-    name: '', category_id: null as number | null, image: null as File | null, remove_image: false,
+    name: '', category_id: null as number | null, images: [] as File[],
     description: '', sort_order: 0, is_active: true,
   }),
-  onSaved: () => table.refresh(),
+  onSaved: () => { table.refresh(); releasePending() },
 })
 
-const currentImage = ref<string | null>(null)
+/** Gallery of the service being edited — refreshed from every API reply. */
+const gallery = ref<ServiceImage[]>([])
+
+/** Files chosen on the create form, previewed locally until the service is saved. */
+const pending = ref<{ file: File; preview: string }[]>([])
+const slotBusy = ref<number | null>(null)
+
+const releasePending = () => {
+  pending.value.forEach(p => URL.revokeObjectURL(p.preview))
+  pending.value = []
+}
+
+const syncPending = () => { drawer.form.value.images = pending.value.map(p => p.file) }
+
+const slots = Array.from({ length: MAX_IMAGES }, (_, i) => i)
+const slotLabel = (i: number) => (i === 0 ? 'الغلاف' : `صورة ${i + 1}`)
+const slotUrl = (i: number) => (drawer.isEditing.value ? gallery.value[i]?.url : pending.value[i]?.preview) ?? null
+
+const galleryError = computed(() => {
+  const errors = drawer.errors.value
+  const key = Object.keys(errors).find(k => k === 'images' || k.startsWith('images.'))
+
+  return key ? errors[key]?.[0] : undefined
+})
+
 const { busyRow, run } = useRowAction(() => table.refresh())
 const confirmDelete = ref<Service | null>(null)
 
-const openCreate = () => { drawer.openCreate(); currentImage.value = null }
-const openEdit = (row: Service) => { drawer.openEdit({ ...row, image: null } as any); currentImage.value = row.image }
+const openCreate = () => { drawer.openCreate(); gallery.value = []; releasePending() }
+const openEdit = (row: Service) => {
+  drawer.openEdit({ ...row, images: [] } as any)
+  gallery.value = row.images ?? []
+  releasePending()
+}
 
+/** Edit mode talks to the API per image, so every action shows at once. */
+const galleryRequest = async (url: string, method: 'POST' | 'DELETE', body?: FormData) => {
+  const res = await $api<Envelope<Service>>(url, { method, body })
+
+  gallery.value = res.data.images
+  toast.success(res.message ?? '')
+  table.refresh()
+}
+
+const reportError = (e: any, fallback: string) => {
+  const body = e?.data
+  const first = body?.errors ? (Object.values(body.errors)[0] as string[] | undefined)?.[0] : undefined
+
+  toast.error(first ?? body?.message ?? fallback)
+}
+
+const pickSlot = async (i: number, file: File) => {
+  if (!drawer.isEditing.value) {
+    const entry = { file, preview: URL.createObjectURL(file) }
+    const current = pending.value[i]
+
+    if (current) {
+      URL.revokeObjectURL(current.preview)
+      pending.value.splice(i, 1, entry)
+    }
+    else {
+      pending.value.push(entry)
+    }
+
+    syncPending()
+
+    return
+  }
+
+  const id = drawer.editingId.value
+  const existing = gallery.value[i]
+  const body = new FormData()
+
+  slotBusy.value = i
+
+  try {
+    if (existing) {
+      body.append('image', file)
+      await galleryRequest(`/admin/services/${id}/images/${existing.id}`, 'POST', body)
+    }
+    else {
+      body.append('images[]', file)
+      await galleryRequest(`/admin/services/${id}/images`, 'POST', body)
+    }
+  }
+  catch (e: any) {
+    reportError(e, 'تعذّر رفع الصورة')
+  }
+  finally {
+    slotBusy.value = null
+  }
+}
+
+const removeSlot = async (i: number) => {
+  if (!drawer.isEditing.value) {
+    const current = pending.value[i]
+
+    if (current) {
+      URL.revokeObjectURL(current.preview)
+      pending.value.splice(i, 1)
+      syncPending()
+    }
+
+    return
+  }
+
+  const existing = gallery.value[i]
+
+  if (!existing)
+    return
+
+  slotBusy.value = i
+
+  try {
+    await galleryRequest(`/admin/services/${drawer.editingId.value}/images/${existing.id}`, 'DELETE')
+  }
+  catch (e: any) {
+    reportError(e, 'تعذّر حذف الصورة')
+  }
+  finally {
+    slotBusy.value = null
+  }
+}
+
+onBeforeUnmount(releasePending)
 
 const toggle = (row: Service) => run(row.id, () => $api(`/admin/services/${row.id}/toggle`, { method: 'POST' }))
 
@@ -84,10 +215,18 @@ const remove = async () => {
       @create="openCreate"
     >
       <template #item.image="{ item }">
-        <VAvatar v-if="item.image" :image="item.image" size="38" rounded />
-        <VAvatar v-else size="38" rounded color="secondary" variant="tonal">
-          <VIcon icon="tabler-tool" size="20" />
-        </VAvatar>
+        <VBadge
+          :model-value="(item.images?.length ?? 0) > 1"
+          :content="item.images?.length"
+          color="primary"
+          offset-x="4"
+          offset-y="4"
+        >
+          <VAvatar v-if="item.image" :image="item.image" size="38" rounded />
+          <VAvatar v-else size="38" rounded color="secondary" variant="tonal">
+            <VIcon icon="tabler-tool" size="20" />
+          </VAvatar>
+        </VBadge>
       </template>
 
       <template #item.name="{ item }">
@@ -167,14 +306,31 @@ const remove = async () => {
         class="mb-4"
       />
 
-      <AppImageUpload
-        v-model="drawer.form.value.image"
-        :current-url="currentImage"
-        label="صورة الخدمة"
-        :error-message="drawer.fieldError('image')"
-        class="mb-4"
-        @remove="currentImage = null; drawer.form.value.remove_image = true"
-      />
+      <div class="mb-4">
+        <div class="d-flex align-center justify-space-between mb-2">
+          <span class="text-body-2 text-high-emphasis">صور الخدمة</span>
+          <span class="text-caption text-disabled">حتى {{ MAX_IMAGES }} صور · الأولى هي الغلاف</span>
+        </div>
+
+        <VRow dense>
+          <VCol v-for="i in slots" :key="i" cols="6">
+            <AppImageSlot
+              :label="slotLabel(i)"
+              :url="slotUrl(i)"
+              removable
+              :uploading="slotBusy === i"
+              :height="120"
+              @pick="file => pickSlot(i, file)"
+              @remove="removeSlot(i)"
+            />
+          </VCol>
+        </VRow>
+
+        <div v-if="galleryError" class="text-caption text-error mt-1">{{ galleryError }}</div>
+        <div v-else-if="drawer.isEditing.value" class="text-caption text-disabled mt-1">
+          كل رفع أو استبدال أو حذف يُحفظ فوراً.
+        </div>
+      </div>
 
       <AppTextarea
         v-model="drawer.form.value.description"
@@ -199,7 +355,7 @@ const remove = async () => {
     <VDialog :model-value="confirmDelete !== null" max-width="420" @update:model-value="confirmDelete = null">
       <VCard title="تأكيد الحذف">
         <VCardText>
-          سيُحذف «{{ confirmDelete?.name }}» نهائياً.
+          سيُحذف «{{ confirmDelete?.name }}» نهائياً مع كل صوره.
           الخدمة المرتبطة بطلبات لا يمكن حذفها — عطّلها بدل ذلك. هل أنت متأكد؟
         </VCardText>
         <VCardActions class="px-6 pb-4">

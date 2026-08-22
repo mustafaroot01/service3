@@ -4,16 +4,18 @@ namespace App\Models;
 
 use App\Support\ArabicSearch;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Service extends Model
 {
+    public const MAX_IMAGES = 4;
+
     protected $fillable = [
         'category_id',
         'name',
-        'image',
         'description',
         'is_active',
         'sort_order',
@@ -31,6 +33,20 @@ class Service extends Model
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(ServiceImage::class)->orderBy('sort')->orderBy('id');
+    }
+
+    /**
+     * The cover is simply the first gallery image, so every consumer that only
+     * knows `image` (the app's lists, the admin table) keeps working unchanged.
+     */
+    protected function image(): Attribute
+    {
+        return Attribute::get(fn () => $this->images->first()?->path);
     }
 
     public function scopeVisible(Builder $query): Builder

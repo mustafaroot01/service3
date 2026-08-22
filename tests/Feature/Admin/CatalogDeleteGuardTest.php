@@ -83,7 +83,7 @@ it('deletes a category with no ordered services', function () {
 it('keeps the image on disk when a delete is refused', function () {
     Storage::fake('public');
     Storage::disk('public')->put('services/keep.jpg', 'binary');
-    $this->service->forceFill(['image' => 'services/keep.jpg'])->save();
+    $this->service->images()->create(['path' => 'services/keep.jpg', 'sort' => 0]);
     ($this->placeOrder)();
 
     ($this->deleteService)()->assertStatus(422);

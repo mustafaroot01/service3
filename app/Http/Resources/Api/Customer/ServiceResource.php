@@ -16,6 +16,10 @@ class ServiceResource extends JsonResource
             'category' => new CategoryResource($this->whenLoaded('category')),
             'name' => $this->name,
             'image' => Media::url($this->image),
+            'images' => $this->images->map(fn ($img) => [
+                'id' => $img->id,
+                'url' => Media::url($img->path),
+            ])->values()->all(),
             'description' => $this->description,
         ];
     }
